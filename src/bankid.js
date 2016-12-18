@@ -87,7 +87,7 @@ class BankId {
 	}
 
 	_createClient() {
-		const pfx = fs.readFileSync(path.resolve(__dirname, 'FPTestcert2_20150818_102329.pfx'));
+		const pfx = fs.readFileSync(path.resolve(__dirname, '../files/', 'FPTestcert2_20150818_102329.pfx'));
 		const passphrase = 'qwerty123';
 		const ca = certificates.testing;
 

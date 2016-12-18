@@ -1,14 +1,14 @@
 {
   "name": "bankid",
   "description": "",
-  "version": "0.1.1",
-  "main": "bankid.js",
+  "version": "0.1.3",
+  "main": "lib/bankid.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hyperborea/bankid.git"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepublish": "babel -d lib/ src/"
   },
   "author": "Sven Perkmann",
   "license": "ISC",
@@ -19,5 +19,8 @@
   "dependencies": {
     "soap": "^0.18.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-preset-env": "^1.1.4"
+  }
 }

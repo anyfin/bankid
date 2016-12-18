@@ -1,4 +1,4 @@
-const BankId = require('./bankid');
+const BankId = require('./lib/bankid');
 
 const pno = process.argv[2];
 const bankid = new BankId();
@@ -8,7 +8,7 @@ bankid.authenticateAndCollect(pno)
 	console.log(res);
 })
 .catch(err => {
-	console.log(res);
+	console.log(err);
 });
 
 // bankid.authenticate(pno).then(res => {
