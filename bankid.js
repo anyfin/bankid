@@ -52,10 +52,31 @@ module.exports = class BankId {
 			this.getClient().then(client => {
 				client.Collect(orderRef, (err, res) => {
 					if (callback) callback(err, res);
-					
+
 					if (err) reject(err);
 					else resolve(res);
 				});
+			}, reject);
+		});
+	}
+
+	authenticateAndCollect(pno, refreshInterval=1000) {
+		return new Promise((resolve, reject) => {
+			this.authenticate(pno)
+			.then(({ orderRef }) => {
+				const timer = setInterval(() => {
+					this.collect(orderRef)
+					.then(res => {
+						if (res.progressStatus === 'COMPLETE') {
+							clearInterval(timer);
+							resolve(res.userInfo);
+						}
+					})
+					.catch(err => {
+						clearInterval(timer);
+						reject(err);
+					});
+				}, refreshInterval);
 			}, reject);
 		});
 	}
@@ -69,7 +90,6 @@ module.exports = class BankId {
 		const wsdlOptions = { pfx, passphrase, ca };
 
 		return new Promise((resolve, reject) => {
-			console.log('creating client');
 			soap.createClient(wsdlUrl, { wsdl_options: wsdlOptions }, (err, client) => {
 				if (err) {
 					reject(err);
