@@ -34,23 +34,25 @@ module.exports = class BankId {
 		});
 	}
 
-	authenticate(pno, collectCallback) {
+	authenticate(pno, callback) {
 		return new Promise((resolve, reject) => {
 			this.getClient().then(client => {
 				client.Authenticate({ personalNumber: pno }, (err, res) => {
+					if (callback) callback(err, res);
+
 					if (err) reject(err);
-					else {
-						resolve(res);
-					}
+					else resolve(res);
 				});
 			}, reject);
 		});
 	}
 
-	collect(orderRef) {
+	collect(orderRef, callback) {
 		return new Promise((resolve, reject) => {
 			this.getClient().then(client => {
 				client.Collect(orderRef, (err, res) => {
+					if (callback) callback(err, res);
+					
 					if (err) reject(err);
 					else resolve(res);
 				});
