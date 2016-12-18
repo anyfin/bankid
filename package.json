@@ -2,6 +2,7 @@
   "name": "bankid",
   "description": "",
   "version": "0.0.1",
+  "repository": "https://github.com/hyperborea/bankid",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
