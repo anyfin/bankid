@@ -1,14 +1,23 @@
 {
   "name": "bankid",
   "description": "",
-  "version": "0.0.1",
-  "repository": "https://github.com/hyperborea/bankid",
+  "version": "0.0.2",
+  "main": "bankid.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hyperborea/bankid.git"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Sven Perkmann",
   "license": "ISC",
+  "homepage": "https://github.com/hyperborea/bankid#readme",
+  "bugs": {
+    "url": "https://github.com/hyperborea/bankid/issues"
+  },
   "dependencies": {
     "soap": "^0.18.0"
-  }
+  },
+  "devDependencies": {}
 }
