@@ -18,11 +18,11 @@ MIID6jCCAtKgAwIBAgIQSvZNAy61UF6qO2zWqvN/3zANBgkqhkiG9w0BAQUFADB0 MSQwIgYDVQQKDBt
 };
 
 class BankId {
-	constructor({ refreshInterval=1000, production=false } = {}) {
-		this.options = {
-			refreshInterval,
-			production,
-		};
+	constructor(options = {}) {
+		this.options = Object.assign({}, {
+			refreshInterval: 1000,
+			production: false,
+		}, options);
 	}
 
 	authenticate(pno, callback) {
