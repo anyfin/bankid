@@ -1,3 +1,5 @@
+'use strict';
+
 const path = require('path');
 const fs = require('fs');
 const soap = require('soap');
@@ -15,7 +17,7 @@ MIID6jCCAtKgAwIBAgIQSvZNAy61UF6qO2zWqvN/3zANBgkqhkiG9w0BAQUFADB0 MSQwIgYDVQQKDBt
 	`,
 };
 
-module.exports = class BankId {
+class BankId {
 	constructor({ refreshInterval=1000, production=false } = {}) {
 		this.options = {
 			refreshInterval,
@@ -104,3 +106,5 @@ module.exports = class BankId {
 		});
 	}
 }
+
+module.exports = BankId;
