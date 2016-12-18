@@ -1,3 +1,4 @@
+const path = require('path');
 const fs = require('fs');
 const soap = require('soap');
 
@@ -58,7 +59,7 @@ module.exports = class BankId {
 	}
 
 	_createClient() {
-		const pfx = fs.readFileSync('./FPTestcert2_20150818_102329.pfx');
+		const pfx = fs.readFileSync(path.resolve(__dirname, 'FPTestcert2_20150818_102329.pfx'));
 		const passphrase = 'qwerty123';
 		const ca = certificates.testing;
 
