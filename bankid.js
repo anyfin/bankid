@@ -16,22 +16,11 @@ MIID6jCCAtKgAwIBAgIQSvZNAy61UF6qO2zWqvN/3zANBgkqhkiG9w0BAQUFADB0 MSQwIgYDVQQKDBt
 };
 
 module.exports = class BankId {
-	constructor({} = {}) {
-
-	}
-
-	getClient() {
-		return new Promise((resolve, reject) => {
-			if (this.client === undefined) {
-				this._createClient().then(client => {
-					this.client = client;
-					resolve(client);
-				}, reject);
-			}
-			else {
-				resolve(this.client);
-			}
-		});
+	constructor({ refreshInterval=1000, production=false } = {}) {
+		this.options = {
+			refreshInterval,
+			production,
+		};
 	}
 
 	authenticate(pno, callback) {
@@ -60,7 +49,7 @@ module.exports = class BankId {
 		});
 	}
 
-	authenticateAndCollect(pno, refreshInterval=1000) {
+	authenticateAndCollect(pno) {
 		return new Promise((resolve, reject) => {
 			this.authenticate(pno)
 			.then(({ orderRef }) => {
@@ -76,8 +65,22 @@ module.exports = class BankId {
 						clearInterval(timer);
 						reject(err);
 					});
-				}, refreshInterval);
+				}, this.options.refreshInterval);
 			}, reject);
+		});
+	}
+
+	getClient() {
+		return new Promise((resolve, reject) => {
+			if (this.client === undefined) {
+				this._createClient().then(client => {
+					this.client = client;
+					resolve(client);
+				}, reject);
+			}
+			else {
+				resolve(this.client);
+			}
 		});
 	}
 
