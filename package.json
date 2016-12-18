@@ -1,7 +1,7 @@
 {
   "name": "bankid",
   "description": "",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "bankid.js",
   "repository": {
     "type": "git",
