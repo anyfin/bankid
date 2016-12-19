@@ -1,9 +1,10 @@
-const BankId = require('./lib/bankid');
+const BankId = require('./src/bankid');
 
 const pno = process.argv[2];
 const bankid = new BankId();
 
-bankid.authenticateAndCollect(pno)
+
+bankid.signAndCollect(pno, 'message')
 .then(res => {
 	console.log(res);
 })
@@ -11,7 +12,8 @@ bankid.authenticateAndCollect(pno)
 	console.log(err);
 });
 
-// bankid.authenticate(pno).then(res => {
+
+// bankid.sign(pno, 'foo bar message').then(res => {
 // 	console.log(res);
 	
 // 	const timer = setInterval(() => {
