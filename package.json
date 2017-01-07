@@ -1,7 +1,11 @@
 {
   "name": "bankid",
   "description": "",
-  "keywords": ["bankid", "authentication", "backend"],
+  "keywords": [
+    "bankid",
+    "authentication",
+    "backend"
+  ],
   "version": "0.1.4",
   "main": "lib/bankid.js",
   "repository": {
