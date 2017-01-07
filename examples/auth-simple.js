@@ -4,5 +4,5 @@ const pno = process.argv[2];
 const bankid = new BankId();
 
 bankid.authenticateAndCollect(pno)
-.then(console.log)
+.then(res => console.log(res.userInfo))
 .catch(console.error);

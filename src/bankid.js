@@ -6,9 +6,7 @@ const soap = require('soap');
 
 
 /*
- * TODO:
- * - return more complete response, not only userInfo
- * - minimal documentation
+ *
  */
 class BankId {
   constructor(options = {}) {
@@ -99,8 +97,8 @@ class BankId {
               if (res.progressStatus === 'COMPLETE') {
                 clearInterval(timer);
 
-                if (callback) callback(null, res.userInfo);
-                resolve(res.userInfo);
+                if (callback) callback(null, res);
+                resolve(res);
               }
             })
             .catch((err) => {
