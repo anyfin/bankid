@@ -5,6 +5,13 @@ const fs = require('fs');
 const soap = require('soap');
 
 
+/*
+ * TODO:
+ * - callback for methodAndCollect's
+ * - proper error parsing
+ * - return more complete response, not only userInfo
+ * - minimal documentation
+ */
 class BankId {
 	constructor(options = {}) {
 		this.options = Object.assign({}, {
@@ -36,6 +43,7 @@ class BankId {
 				client.Authenticate({
 					personalNumber: pno
 				}, (err, res) => {
+					err = this._parseError(err);
 					if (callback) callback(err, res);
 
 					if (err) reject(err);
@@ -52,6 +60,7 @@ class BankId {
 					personalNumber: pno,
 					userVisibleData: new Buffer(message).toString('base64'),
 				}, (err, res) => {
+					err = this._parseError(err);
 					if (callback) callback(err, res);
 
 					if (err) reject(err);
@@ -65,8 +74,9 @@ class BankId {
 		return new Promise((resolve, reject) => {
 			this.getClient().then(client => {
 				client.Collect(orderRef, (err, res) => {
+					err = this._parseError(err);
 					if (callback) callback(err, res);
-
+					
 					if (err) reject(err);
 					else resolve(res);
 				});
@@ -139,6 +149,15 @@ class BankId {
 				}
 			});
 		});
+	}
+
+	_parseError(err) {
+		if (err) {
+			const match = err.toString().match(/^Error: soap:Server: (.*)$/);
+			return match ? match[1] : err.toString();
+		} else {
+			return undefined;
+		}
 	}
 }
 
