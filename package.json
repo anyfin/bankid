@@ -1,12 +1,12 @@
 {
   "name": "bankid",
-  "description": "",
+  "description": "Npm module to simplify integration with the Swedish Bank ID service",
   "keywords": [
     "bankid",
     "authentication",
     "backend"
   ],
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "lib/bankid.js",
   "repository": {
     "type": "git",
