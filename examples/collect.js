@@ -1,24 +1,25 @@
-const BankId = require('../src/bankid');
+const BankId = require("../src/bankid");
 
 const pno = process.argv[2];
 const bankid = new BankId();
 
-bankid.sign(pno, 'foo bar message').then(res => {
- const timer = setInterval(() => {
-   const done = () => clearInterval(timer);
+bankid.sign("127.0.0.1", pno, "visible", "invisible").then(res => {
+  const timer = setInterval(() => {
+    const done = () => clearInterval(timer);
 
-   bankid.collect(res.orderRef)
-   .then(res => {
-     console.log(res.progressStatus);
+    bankid
+      .collect(res.orderRef)
+      .then(res => {
+        console.log(res.status);
 
-     if (res.progressStatus === 'COMPLETE') {
-       console.log(res.userInfo);
-       done();
-     }
-   })
-   .catch(err => {
-     console.log(err.toString());
-     done();
-   })
- }, 1000);
+        if (res.status === "complete") {
+          console.log(res.completionData.user);
+          done();
+        }
+      })
+      .catch(err => {
+        console.log(err.toString());
+        done();
+      });
+  }, 1000);
 });
