@@ -13,7 +13,8 @@
     "url": "git+https://github.com/hyperborea/bankid.git"
   },
   "scripts": {
-    "prepublish": "babel -d lib/ src/"
+    "build": "babel -d lib/ src/",
+    "prepublish": "yarn build"
   },
   "author": "Sven Perkmann",
   "license": "MIT",
