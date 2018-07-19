@@ -1,8 +1,9 @@
-const BankId = require('../src/bankid');
+const BankId = require("../src/bankid");
 
 const pno = process.argv[2];
 const bankid = new BankId();
 
-bankid.authenticateAndCollect(pno)
-.then(res => console.log(res.userInfo))
-.catch(console.error);
+bankid
+  .authenticateAndCollect("127.0.0.1", pno)
+  .then(res => console.log(res.completionData.user))
+  .catch(console.error);

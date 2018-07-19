@@ -9,73 +9,80 @@ Npm module to simplify integration with the Swedish [Bank ID](https://www.bankid
 ## Usage
 
 ```javascript
-const BankId = require('bankid');
+const BankId = require("bankid");
 
 const bankid = new BankId();
-const pno = <SOME_PERSONAL_NUMBER>;
+const pno = "YYYYMMDD-XXXX";
 
-bankid.authenticateAndCollect(pno)
-  .then(res => console.log(res.userInfo))
-  .catch(err => console.error(err));
+bankid
+  .authenticateAndCollect("127.0.0.1", pno)
+  .then(res => console.log(res.completionData))
+  .catch(console.error);
 ```
-As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v2.13.pdf) there's three main methods
-- ```authenticate(personalNumber)```
-- ```sign(personalNumber, message)```
-- ```collect(orderRef)```
 
-In addition *bankid* provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above)
-- ```authenticateAndCollect(personalNumber)```
-- ```signAndCollect(personalNumber, message)```
+As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v2.13.pdf) there's three main methods (arguments marked with `*` are required)
 
-All methods return promises, but you can also pass in an ordinary callback as the last argument.
+- `authenticate(endUserIp*, personalNumber, requirement)`
+- `sign(endUserIp*, personalNumber, userVisibleData*, userNonVisibleData, requirement)`
+- `collect(orderRef*)`
 
-Full example *not* using the convenience methods:
+In addition _bankid_ provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above)
+
+- `authenticateAndCollect(...)`
+- `signAndCollect(...)`
+
+Full example _not_ using the convenience methods:
+
 ```javascript
-const BankId = require('bankid');
+const BankId = require("bankid");
 
 const bankid = new BankId();
-const pno = <SOME_PERSONAL_NUMBER>;
-const message = 'some message displayed to the user to sign';
+const pno = "YYYYMMDD-XXXX";
+const message = "some message displayed to the user to sign";
 
-bankid.sign(pno, message).then(res => {
- const timer = setInterval(() => {
-   const done = () => clearInterval(timer);
+bankid
+  .sign("127.0.0.1", pno, message)
+  .then(res => {
+    const timer = setInterval(() => {
+      const done = () => clearInterval(timer);
 
-   bankid.collect(res.orderRef)
-   .then(res => {
-     console.log(res.progressStatus);
-
-     if (res.progressStatus === 'COMPLETE') {
-       console.log(res.userInfo);
-       done();
-     }
-   })
-   .catch(err => {
-     console.log(err.toString());
-     done();
-   })
- }, 1000);
-});
+      bankid
+        .collect(res.orderRef)
+        .then(res => {
+          if (res.status === "complete") {
+            console.log(res.completionData);
+            done();
+          }
+        })
+        .catch(err => {
+          console.log(err.toString());
+          done();
+        });
+    }, 1000);
+  })
+  .catch(console.error);
 ```
 
 ## Configuration
 
 By default bankid is instantiated with the following configuration pointing to the Bank ID Test Environment
+
 ```javascript
 {
   refreshInterval: 1000, // how often to poll status changes for authenticateAndCollect and signAndCollect
 	production: false, // use test environment
-	pfx: <PATH_TO_TEST_ENV_PFX>, // test environment
-	passphrase: <TEST_ENV_PASSPHRASE>, // test environment
-	ca: <CERTIFICATE>, // dynamically set depending on the "production" setting unless explicitely provided
+	pfx: "PATH_TO_TEST_ENV_PFX", // test environment
+	passphrase: "TEST_ENV_PASSPHRASE", // test environment
+	ca: "CERTIFICATE", // dynamically set depending on the "production" setting unless explicitely provided
 }
 ```
 
 For production you'll want to pass in your own pfx and passphrase instead:
+
 ```javascript
 const bankid = new BankId({
   production: true,
-  pfx: <PATH_TO_YOUR_PFX>, // alternatively also accepts buffer
-  passphrase: <YOUR_PASSPHRASE>,
+  pfx: "PATH_TO_YOUR_PFX", // alternatively also accepts buffer
+  passphrase: "YOUR_PASSPHRASE"
 });
 ```

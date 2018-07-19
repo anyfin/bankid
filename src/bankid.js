@@ -1,164 +1,137 @@
-'use strict';
+"use strict";
 
-const path = require('path');
-const fs = require('fs');
-const soap = require('soap');
+const path = require("path");
+const fs = require("fs");
+const https = require("https");
+const axios = require("axios");
 
-
-/*
- *
- */
 class BankId {
   constructor(options = {}) {
-    this.options = Object.assign({}, {
-      refreshInterval: 1000,
-      production: false,
-      // defaults for test environment
-      pfx: path.resolve(__dirname, '../cert/', 'FPTestcert2_20150818_102329.pfx'),
-      passphrase: 'qwerty123',
-      // certificate is provided by package by default
-      ca: undefined,
-    }, options);
+    this.options = Object.assign(
+      {},
+      {
+        refreshInterval: 1000,
+        production: false,
+        // defaults for test environment
+        pfx: path.resolve(
+          __dirname,
+          "../cert/",
+          "FPTestcert2_20150818_102329.pfx"
+        ),
+        passphrase: "qwerty123",
+        // certificate is provided by package by default
+        ca: undefined
+      },
+      options
+    );
 
     if (this.options.production) {
       if (!options.pfx || !options.passphrase) {
-        throw Error('BankId requires the pfx and passphrase in production mode');
+        throw Error(
+          "BankId requires the pfx and passphrase in production mode"
+        );
       }
     }
 
     if (this.options.ca === undefined) {
       this.options.ca = this.options.production
-        ? path.resolve(__dirname, '../cert/', 'prod.ca')
-        : path.resolve(__dirname, '../cert/', 'test.ca');
+        ? path.resolve(__dirname, "../cert/", "prod.ca")
+        : path.resolve(__dirname, "../cert/", "test.ca");
     }
+
+    this.axios = this._createAxiosInstance();
   }
 
-  authenticate(pno, callback) {
-    return new Promise((resolve, reject) => {
-      this.getClient().then((client) => {
-        client.Authenticate({
-          personalNumber: pno,
-        }, (err, res) => {
-          err = this._parseError(err);
-          if (callback) callback(err, res);
-
-          if (err) reject(err);
-          else resolve(res);
-        });
-      }, reject);
+  authenticate(endUserIp, personalNumber, requirement) {
+    if (!endUserIp) {
+      throw Error("Missing required argument endUserIp.");
+    }
+    return this._call("auth", {
+      endUserIp,
+      personalNumber,
+      requirement
     });
   }
 
-  sign(pno, message, callback) {
-    return new Promise((resolve, reject) => {
-      this.getClient().then((client) => {
-        client.Sign({
-          personalNumber: pno,
-          userVisibleData: new Buffer(message).toString('base64'),
-        }, (err, res) => {
-          err = this._parseError(err);
-          if (callback) callback(err, res);
-
-          if (err) reject(err);
-          else resolve(res);
-        });
-      }, reject);
+  sign(
+    endUserIp,
+    personalNumber,
+    userVisibleData,
+    userNonVisibleData,
+    requirement
+  ) {
+    if (!endUserIp || !userVisibleData) {
+      throw Error("Missing required arguments: endUserIp, userVisibleData.");
+    }
+    return this._call("sign", {
+      endUserIp,
+      personalNumber,
+      userVisibleData: new Buffer(userVisibleData).toString("base64"),
+      userNonVisibleData: userNonVisibleData
+        ? new Buffer(userNonVisibleData).toString("base64")
+        : undefined,
+      requirement
     });
   }
 
-  collect(orderRef, callback) {
+  collect(orderRef) {
+    return this._call("collect", { orderRef });
+  }
+
+  authenticateAndCollect(...args) {
+    return this._methodAndCollect(this.authenticate.bind(this), ...args);
+  }
+
+  signAndCollect(...args) {
+    return this._methodAndCollect(this.sign.bind(this), ...args);
+  }
+
+  _methodAndCollect(method, ...args) {
     return new Promise((resolve, reject) => {
-      this.getClient().then((client) => {
-        client.Collect(orderRef, (err, res) => {
-          err = this._parseError(err);
-          if (callback) callback(err, res);
-
-          if (err) reject(err);
-          else resolve(res);
-        });
-      }, reject);
-    });
-  }
-
-  authenticateAndCollect(pno, callback) {
-    return this._methodAndCollect(this.authenticate.bind(this), callback, pno);
-  }
-
-  signAndCollect(pno, message, callback) {
-    return this._methodAndCollect(this.sign.bind(this), callback, pno, message);
-  }
-
-  _methodAndCollect(method, callback, ...args) {
-    return new Promise((resolve, reject) => {
-      method(...args).then(({ orderRef }) => {
-        const timer = setInterval(() => {
-          this.collect(orderRef)
-            .then((res) => {
-              if (res.progressStatus === 'COMPLETE') {
+      method(...args).then(
+        ({ orderRef }) => {
+          const timer = setInterval(() => {
+            this.collect(orderRef)
+              .then(res => {
+                if (res.status === "complete") {
+                  clearInterval(timer);
+                  resolve(res);
+                }
+              })
+              .catch(err => {
                 clearInterval(timer);
-
-                if (callback) callback(null, res);
-                resolve(res);
-              }
-            })
-            .catch((err) => {
-              clearInterval(timer);
-
-              if (callback) callback(err);
-              reject(err);
-            });
-        }, this.options.refreshInterval);
-      }, (err) => {
-        if (callback) callback(err);
-        reject(err);
-      });
+                reject(err);
+              });
+          }, this.options.refreshInterval);
+        },
+        err => {
+          reject(err);
+        }
+      );
     });
   }
 
-  getClient() {
-    return new Promise((resolve, reject) => {
-      if (this.client === undefined) {
-        this._createClient().then((client) => {
-          this.client = client;
-          resolve(client);
-        }, reject);
-      } else {
-        resolve(this.client);
+  _call(action, payload) {
+    const baseUrl = this.options.production
+      ? "https://appapi2.bankid.com/rp/v5/"
+      : "https://appapi2.test.bankid.com/rp/v5/";
+    return this.axios.post(baseUrl + action, payload).then(res => res.data);
+  }
+
+  _createAxiosInstance() {
+    const opts = this.options,
+      ca = Buffer.isBuffer(opts.ca)
+        ? opts.ca
+        : fs.readFileSync(opts.ca, "utf-8"),
+      pfx = Buffer.isBuffer(opts.pfx) ? opts.pfx : fs.readFileSync(opts.pfx),
+      passphrase = opts.passphrase;
+
+    return axios.create({
+      httpsAgent: new https.Agent({ pfx, passphrase, ca }),
+      headers: {
+        "Content-Type": "application/json"
       }
     });
-  }
-
-  _createClient() {
-    const opts = this.options;
-
-    const ca = Buffer.isBuffer(opts.ca) ? opts.ca : fs.readFileSync(opts.ca, 'utf-8');
-    const pfx = Buffer.isBuffer(opts.pfx) ? opts.pfx : fs.readFileSync(opts.pfx);
-    const passphrase = opts.passphrase;
-
-    const wsdlUrl = opts.production
-      ? 'https://appapi.bankid.com/rp/v4?wsdl'
-      : 'https://appapi.test.bankid.com/rp/v4?wsdl';
-    const wsdlOptions = { pfx, passphrase, ca };
-
-    return new Promise((resolve, reject) => {
-      soap.createClient(wsdlUrl, { wsdl_options: wsdlOptions }, (err, client) => {
-        if (err) {
-          reject(err);
-        } else {
-          client.setSecurity(new soap.ClientSSLSecurityPFX(pfx, passphrase, { ca }));
-          resolve(client);
-        }
-      });
-    });
-  }
-
-  _parseError(err) {
-    if (err) {
-      const match = err.toString().match(/^Error: soap:Server: (.*)$/);
-      return match ? match[1] : err.toString();
-    } else {
-      return undefined;
-    }
   }
 }
 

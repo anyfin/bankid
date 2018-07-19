@@ -2,11 +2,11 @@
   "name": "bankid",
   "description": "Npm module to simplify integration with the Swedish Bank ID service",
   "keywords": [
+    "node",
     "bankid",
-    "authentication",
-    "backend"
+    "authentication"
   ],
-  "version": "0.2.2",
+  "version": "1.0.0",
   "main": "lib/bankid.js",
   "repository": {
     "type": "git",
@@ -16,13 +16,13 @@
     "prepublish": "babel -d lib/ src/"
   },
   "author": "Sven Perkmann",
-  "license": "ISC",
+  "license": "MIT",
   "homepage": "https://github.com/hyperborea/bankid#readme",
   "bugs": {
     "url": "https://github.com/hyperborea/bankid/issues"
   },
   "dependencies": {
-    "soap": "^0.19.0"
+    "axios": "^0.18.0"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
