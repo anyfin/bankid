@@ -96,6 +96,9 @@ class BankId {
                 if (res.status === "complete") {
                   clearInterval(timer);
                   resolve(res);
+                } else if (res.status === "failed") {
+                  clearInterval(timer);
+                  reject(new Error(res.hintCode));
                 }
               })
               .catch(err => {
@@ -104,9 +107,7 @@ class BankId {
               });
           }, this.options.refreshInterval);
         },
-        err => {
-          reject(err);
-        }
+        err => reject(err)
       );
     });
   }
@@ -115,7 +116,14 @@ class BankId {
     const baseUrl = this.options.production
       ? "https://appapi2.bankid.com/rp/v5/"
       : "https://appapi2.test.bankid.com/rp/v5/";
-    return this.axios.post(baseUrl + action, payload).then(res => res.data);
+    return this.axios
+      .post(baseUrl + action, payload)
+      .then(res => res.data)
+      .catch(err => {
+        throw new Error(
+          `${err.response.data.errorCode}: ${err.response.data.details}`
+        );
+      });
   }
 
   _createAxiosInstance() {

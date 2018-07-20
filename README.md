@@ -52,10 +52,12 @@ bankid
           if (res.status === "complete") {
             console.log(res.completionData);
             done();
+          } else if (res.status === "failed") {
+            throw new Error(res.hintCode);
           }
         })
         .catch(err => {
-          console.log(err.toString());
+          console.error(err);
           done();
         });
     }, 1000);
