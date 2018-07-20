@@ -10,7 +10,7 @@
   "main": "lib/bankid.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hyperborea/bankid.git"
+    "url": "git+https://github.com/anyfin/bankid.git"
   },
   "scripts": {
     "build": "babel -d lib/ src/",
@@ -18,9 +18,9 @@
   },
   "author": "Sven Perkmann",
   "license": "MIT",
-  "homepage": "https://github.com/hyperborea/bankid#readme",
+  "homepage": "https://github.com/anyfin/bankid#readme",
   "bugs": {
-    "url": "https://github.com/hyperborea/bankid/issues"
+    "url": "https://github.com/anyfin/bankid/issues"
   },
   "dependencies": {
     "axios": "^0.18.0"
