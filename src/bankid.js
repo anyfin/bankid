@@ -120,9 +120,9 @@ class BankId {
       .post(baseUrl + action, payload)
       .then(res => res.data)
       .catch(err => {
-        throw new Error(
-          `${err.response.data.errorCode}: ${err.response.data.details}`
-        );
+        const error = new Error(err.response.data.errorCode);
+        error.details = err.response.data.details;
+        throw error;
       });
   }
 
