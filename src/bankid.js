@@ -78,6 +78,10 @@ class BankId {
     return this._call("collect", { orderRef });
   }
 
+  cancel(orderRef) {
+    return this._call("cancel", { orderRef });
+  }
+
   authenticateAndCollect(...args) {
     return this._methodAndCollect(this.authenticate.bind(this), ...args);
   }
