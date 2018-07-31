@@ -31,6 +31,10 @@ In addition _bankid_ provides convenience methods to combine auth / sign with pe
 - `authenticateAndCollect(...)`
 - `signAndCollect(...)`
 
+A method to cancel requests is also available:
+
+- `cancel(orderRef*)`
+
 Full example _not_ using the convenience methods:
 
 ```javascript
