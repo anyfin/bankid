@@ -20,11 +20,12 @@ bankid
   .catch(console.error);
 ```
 
-As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v2.13.pdf) there's three main methods (arguments marked with `*` are required)
+As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v2.13.pdf) there's four main methods (arguments marked with `*` are required)
 
 - `authenticate(endUserIp*, personalNumber, requirement)`
 - `sign(endUserIp*, personalNumber, userVisibleData*, userNonVisibleData, requirement)`
 - `collect(orderRef*)`
+- `cancel(orderRef*)`
 
 In addition _bankid_ provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above)
 
