@@ -66,9 +66,9 @@ class BankId {
     return this._call("sign", {
       endUserIp,
       personalNumber,
-      userVisibleData: new Buffer(userVisibleData).toString("base64"),
+      userVisibleData: Buffer.from(userVisibleData).toString("base64"),
       userNonVisibleData: userNonVisibleData
-        ? new Buffer(userNonVisibleData).toString("base64")
+        ? Buffer.from(userNonVisibleData).toString("base64")
         : undefined,
       requirement
     });
