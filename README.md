@@ -20,6 +20,20 @@ bankid
   .catch(console.error);
 ```
 
+
+You can also skip the personalNumber and use the autostarttoken. This enables the user to start the BankID application without supplying their personal number.
+
+```javascript
+const BankId = require("bankid");
+
+const bankid = new BankId();
+
+bankid
+  .authenticateAndCollect("127.0.0.1")
+  .then(res => console.log(res.completionData))
+  .catch(console.error);
+```
+
 As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v2.13.pdf) there's four main methods (arguments marked with `*` are required)
 
 - `authenticate(endUserIp*, personalNumber, requirement)`

@@ -43,14 +43,21 @@ class BankId {
   }
 
   authenticate(endUserIp, personalNumber, requirement) {
+
     if (!endUserIp) {
       throw Error("Missing required argument endUserIp.");
     }
-    return this._call("auth", {
+
+    let options = {
       endUserIp,
-      personalNumber,
       requirement
-    });
+    };
+
+    if(personalNumber) {
+      options.personalNumber = personalNumber;
+    }
+
+    return this._call("auth", options);
   }
 
   sign(
