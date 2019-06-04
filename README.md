@@ -89,3 +89,25 @@ const bankid = new BankId({
   passphrase: "YOUR_PASSPHRASE"
 });
 ```
+
+### PFX path
+
+When providing a pfx path it is expected to be based on the current working directory from where the script is run.
+
+Example:
+
+```
+.
+├── certs
+│   └── bankid.pfx
+├── src
+│   └── main.js
+```
+
+From the current directory you would run the script with `node src/main.js` and provide the pfx path like this
+
+```javascript
+const bankid = new Bankid({
+  pfx: "certs/bankid.pfx"
+});
+```
