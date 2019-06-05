@@ -23,7 +23,7 @@
     "url": "https://github.com/anyfin/bankid/issues"
   },
   "dependencies": {
-    "axios": "^0.19.0"
+    "axios": "^0.18.1"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
