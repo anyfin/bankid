@@ -124,8 +124,17 @@ class BankId {
       .post(baseUrl + action, payload)
       .then(res => res.data)
       .catch(err => {
-        const error = new Error(err.response.data.errorCode);
-        error.details = err.response.data.details;
+        let error;
+        if (err.response) {
+          error = new Error(err.response.data.errorCode);
+          error.details = err.response.data.details;
+        } else if (err.request) {
+          error = new Error("BANKID_NO_RESPONSE");
+          error.request = err.request;
+        } else {
+          error = err;
+        }
+
         throw error;
       });
   }
