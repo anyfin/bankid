@@ -5,7 +5,7 @@ import { AxiosInstance } from "axios";
 
 const axios = require("axios").default;
 
-interface BankIdSettings {
+export interface BankIdSettings {
   production: boolean;
   refreshInterval: number;
   pfx?: string;
@@ -13,7 +13,7 @@ interface BankIdSettings {
   ca?: string;
 }
 
-interface BankIdRequirement {
+export interface BankIdRequirement {
   cardReader?: "class1" | "class2";
   certificatePolicies?: string[];
   issuerCn?: string[];
@@ -21,13 +21,13 @@ interface BankIdRequirement {
   allowFingerprint?: boolean;
 }
 
-interface AuthArguments {
+export interface AuthArguments {
   endUserIp: string;
   personalNumber?: string;
   requirement?: BankIdRequirement;
 }
 
-interface SignArguments {
+export interface SignArguments {
   endUserIp: string;
   userVisibleData: string;
   personalNumber?: string;
@@ -35,36 +35,38 @@ interface SignArguments {
   requirement?: BankIdRequirement;
 }
 
-interface SignAndAuthResponse {
+export interface SignAndAuthResponse {
   autoStartToken: string;
   orderRef: string;
 }
 
-interface CollectOrCancelArguments {
+export interface CollectOrCancelArguments {
   orderRef: string;
 }
 
-interface CollectResponse {
+export interface CollectResponse {
   orderRef: string;
   status: "pending" | "failed" | "complete";
   hintCode?: FailedHintCode | PendingHintCode;
   completionData?: CompletionData;
 }
 
-type FailedHintCode =
+export type CancelResponse = {};
+
+export type FailedHintCode =
   | "expiredTransaction"
   | "certificateErr"
   | "userCancel"
   | "cancelled"
   | "startFailed";
 
-type PendingHintCode =
+export type PendingHintCode =
   | "outstandingTransaction"
   | "noClient"
   | "started"
   | "userSign";
 
-interface CompletionData {
+export interface CompletionData {
   user: {
     personalNumber: string;
     name: string;
@@ -82,14 +84,20 @@ interface CompletionData {
   ocspResponse: string;
 }
 
-export class BankId {
+export type BankIdMethod = "auth" | "sign" | "collect" | "cancel";
+export type BankIdPayload =
+  | AuthArguments
+  | SignArguments
+  | CollectOrCancelArguments;
+
+export class BankIdClient {
   readonly options: BankIdSettings;
   readonly axios: AxiosInstance;
   readonly baseUrl: string;
 
   constructor(options?: BankIdSettings) {
     this.options = {
-      refreshInterval: 1000,
+      refreshInterval: 2000,
       production: false,
       // defaults for test environment
       pfx: path.resolve(
@@ -124,18 +132,18 @@ export class BankId {
       : "https://appapi2.test.bankid.com/rp/v5/";
   }
 
-  async authenticate(parameters: AuthArguments) {
+  async authenticate(parameters: AuthArguments): Promise<SignAndAuthResponse> {
     if (!parameters.endUserIp) {
       throw Error("Missing required argument endUserIp.");
     }
 
-    return this.axios.post<SignAndAuthResponse>(
-      this.baseUrl + "auth",
+    return await this._call<AuthArguments, SignAndAuthResponse>(
+      "auth",
       parameters
     );
   }
 
-  async sign(parameters: SignArguments) {
+  async sign(parameters: SignArguments): Promise<SignAndAuthResponse> {
     if (!parameters.endUserIp || !parameters.userVisibleData) {
       throw Error("Missing required arguments: endUserIp, userVisibleData.");
     }
@@ -150,55 +158,77 @@ export class BankId {
         : undefined
     };
 
-    return this.axios.post<SignAndAuthResponse>(
-      this.baseUrl + "sign",
+    return await this._call<SignArguments, SignAndAuthResponse>(
+      "sign",
       parameters
     );
   }
 
   async collect(parameters: CollectOrCancelArguments) {
-    return this.axios.post<CollectResponse>(
-      this.baseUrl + "collect",
+    return await this._call<CollectOrCancelArguments, CollectResponse>(
+      "collect",
       parameters
     );
   }
 
-  async cancel(parameters: CollectOrCancelArguments) {
-    return this.axios.post<{}>(this.baseUrl + "cancel", parameters);
+  async cancel(parameters: CollectOrCancelArguments): Promise<CancelResponse> {
+    return await this._call<CollectOrCancelArguments, CancelResponse>(
+      "cancel",
+      parameters
+    );
   }
 
   async authenticateAndCollect(
     parameters: AuthArguments
   ): Promise<CollectResponse> {
-    const authResponse = await this.authenticate(parameters);
+    try {
+      const authResponse = await this.authenticate(parameters);
 
-    return await this._awaitPendingCollect(authResponse.data.orderRef);
+      return await this._awaitPendingCollect(authResponse.orderRef);
+    } catch (e) {
+      throw e;
+    }
   }
 
   async signAndCollect(parameters: SignArguments): Promise<CollectResponse> {
-    const signResponse = await this.sign(parameters);
+    try {
+      const signResponse = await this.sign(parameters);
 
-    return await this._awaitPendingCollect(signResponse.data.orderRef);
+      return await this._awaitPendingCollect(signResponse.orderRef);
+    } catch (e) {
+      throw e;
+    }
   }
 
-  _awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
-    return new Promise((resolve, reject) => {
+  async _awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
+    return await new Promise((resolve, reject) => {
       const timer = setInterval(() => {
         this.collect({ orderRef })
-          .then(res => {
-            if (res.data.status === "complete") {
-              resolve(res.data);
-            } else if (res.data.status === "failed") {
-              reject(new Error(res.data.hintCode));
+          .then(response => {
+            if (response.status === "complete") {
+              resolve(response);
+            } else if (response.status === "failed") {
+              reject(response);
             }
           })
-          .catch(err => {
-            reject(err);
-          })
-          .finally(() => {
+          .catch(error => {
             clearInterval(timer);
+            reject(error);
           });
       }, this.options.refreshInterval);
+    });
+  }
+
+  async _call<req, res>(method: BankIdMethod, payload: req): Promise<res> {
+    return await new Promise((resolve, reject) => {
+      this.axios
+        .post<res>(this.baseUrl + method, payload)
+        .then(response => {
+          resolve(response.data);
+        })
+        .catch(error => {
+          reject(error.response.data);
+        });
     });
   }
 
