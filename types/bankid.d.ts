@@ -1,26 +1,34 @@
-export interface BankIdSettings {
+interface BankIdSettings {
     production: boolean,
     refreshInterval: number,
-    pfx: string,
-    passphrase: string,
-    ca: string
+    pfx?: string,
+    passphrase?: string,
+    ca?: string
 }
 
-export class BankId {
+interface BankIdRequirement {
+    cardReader?: "class1" | "class2"
+    certificatePolicies?: string[],
+    issuerCn?: string[],
+    autoStarkTokenRequired?: boolean
+    allowFingerprint?: boolean
+}
 
-    constructor(options: BankIdSettings);
+export default class BankId {
 
-    authenticate(endUserIp: string, personalNumber: string, requirement: boolean)
+    constructor(options?: BankIdSettings);
 
-    sign(endUserIp: string, personalNumber: string, userVisibleData: string, userNonVisisbleData: string, requirement: boolean)
+    authenticate(endUserIp: string, personalNumber?: string, requirement?: BankIdRequirement): object
 
-    collect(orderRef: string)
+    sign(endUserIp: string, userVisibleData: string, personalNumber?: string, userNonVisibleData?: string, requirement?: BankIdRequirement): object
 
-    cancel(orderRef: string)
+    collect(orderRef: string): object
 
-    authenticateAndCollect()
+    cancel(orderRef: string): object
 
-    signAndCollect()
+    authenticateAndCollect(): object
+
+    signAndCollect(): object
 }
 
 
