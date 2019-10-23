@@ -1,4 +1,4 @@
-export declare type BankIdOptions = {
+export interface BankIdSettings {
     production: boolean,
     refreshInterval: number,
     pfx: string,
@@ -6,13 +6,13 @@ export declare type BankIdOptions = {
     ca: string
 }
 
-export declare class BankId {
+export class BankId {
 
-    constructor(options: BankIdOptions);
+    constructor(options: BankIdSettings);
 
     authenticate(endUserIp: string, personalNumber: string, requirement: boolean)
 
-    sign(endUserIp: string, personsalNumber: string, userVisibleData: string, userNonVisisbleData: string, requirement: boolean)
+    sign(endUserIp: string, personalNumber: string, userVisibleData: string, userNonVisisbleData: string, requirement: boolean)
 
     collect(orderRef: string)
 
@@ -22,4 +22,5 @@ export declare class BankId {
 
     signAndCollect()
 }
+
 
