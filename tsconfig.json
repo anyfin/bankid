@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "sourceMap": true,
+    "downlevelIteration": true,
+    "target": "es6",
+    "lib": ["es2015", "es2016", "dom", "ESNEXT"],
+    "outDir": "./lib",
+    "declaration": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts"
+  ]
+}
