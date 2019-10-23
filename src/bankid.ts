@@ -5,42 +5,45 @@ import { AxiosInstance } from "axios";
 
 const axios = require("axios").default;
 
-export interface BankIdSettings {
-  production: boolean;
-  refreshInterval: number;
-  pfx?: string;
-  passphrase?: string;
-  ca?: string;
-}
+//
+// Type definitions for /auth
+//
 
-export interface BankIdRequirement {
-  cardReader?: "class1" | "class2";
-  certificatePolicies?: string[];
-  issuerCn?: string[];
-  autoStarkTokenRequired?: boolean;
-  allowFingerprint?: boolean;
-}
-
-export interface AuthArguments {
+export interface AuthRequest {
   endUserIp: string;
   personalNumber?: string;
-  requirement?: BankIdRequirement;
+  requirement?: AuthOptionalRequirements;
 }
 
-export interface SignArguments {
-  endUserIp: string;
-  userVisibleData: string;
-  personalNumber?: string;
-  userNonVisibleData?: string;
-  requirement?: BankIdRequirement;
-}
-
-export interface SignAndAuthResponse {
+export interface AuthResponse {
   autoStartToken: string;
   orderRef: string;
 }
 
-export interface CollectOrCancelArguments {
+interface AuthOptionalRequirements {
+  cardReader?: "class1" | "class2";
+  certificatePolicies?: string[];
+  issuerCn?: string[];
+  autoStartTokenRequired?: boolean;
+  allowFingerprint?: boolean;
+}
+
+//
+// Type definitions for /sign
+//
+
+export interface SignRequest extends AuthRequest {
+  userVisibleData: string;
+  userNonVisibleData?: string;
+}
+
+export interface SignResponse extends AuthResponse {}
+
+//
+// Type definitions for /collect
+//
+
+export interface CollectRequest {
   orderRef: string;
 }
 
@@ -50,21 +53,6 @@ export interface CollectResponse {
   hintCode?: FailedHintCode | PendingHintCode;
   completionData?: CompletionData;
 }
-
-export type CancelResponse = {};
-
-export type FailedHintCode =
-  | "expiredTransaction"
-  | "certificateErr"
-  | "userCancel"
-  | "cancelled"
-  | "startFailed";
-
-export type PendingHintCode =
-  | "outstandingTransaction"
-  | "noClient"
-  | "started"
-  | "userSign";
 
 export interface CompletionData {
   user: {
@@ -84,18 +72,92 @@ export interface CompletionData {
   ocspResponse: string;
 }
 
-export type BankIdMethod = "auth" | "sign" | "collect" | "cancel";
-export type BankIdPayload =
-  | AuthArguments
-  | SignArguments
-  | CollectOrCancelArguments;
+export type FailedHintCode =
+  | "expiredTransaction"
+  | "certificateErr"
+  | "userCancel"
+  | "cancelled"
+  | "startFailed";
+
+export type PendingHintCode =
+  | "outstandingTransaction"
+  | "noClient"
+  | "started"
+  | "userSign";
+
+//
+// Type definitions for /cancel
+//
+
+export interface CancelRequest extends CollectRequest {}
+
+export interface CancelResponse {}
+
+//
+// Type definitions for error responses
+//
+
+export interface ErrorResponse {
+  errorCode: BankIdErrorCode;
+  details: string;
+}
+
+export enum BankIdErrorCode {
+  "alreadyInProgress",
+  "invalidParameters",
+  "unauthorized",
+  "notFound",
+  "requestTimeout",
+  "unsupportedMediaType",
+  "internalError",
+  "Maintenance"
+}
+
+//
+// Collection of overarching types
+//
+
+export enum BankIdMethod {
+  "auth",
+  "sign",
+  "collect",
+  "cancel"
+}
+
+export type BankIdRequest =
+  | AuthRequest
+  | SignRequest
+  | CollectRequest
+  | CancelRequest;
+
+export type BankIdResponse =
+  | CancelResponse
+  | AuthResponse
+  | SignResponse
+  | CollectResponse;
+
+//
+// Client settings
+//
+
+interface BankIdClientSettings {
+  production: boolean;
+  refreshInterval: number;
+  pfx?: string;
+  passphrase?: string;
+  ca?: string;
+}
+
+//
+// Client implementation
+//
 
 export class BankIdClient {
-  readonly options: BankIdSettings;
+  readonly options: BankIdClientSettings;
   readonly axios: AxiosInstance;
   readonly baseUrl: string;
 
-  constructor(options?: BankIdSettings) {
+  constructor(options?: BankIdClientSettings) {
     this.options = {
       refreshInterval: 2000,
       production: false,
@@ -132,18 +194,18 @@ export class BankIdClient {
       : "https://appapi2.test.bankid.com/rp/v5/";
   }
 
-  async authenticate(parameters: AuthArguments): Promise<SignAndAuthResponse> {
+  async authenticate(parameters: AuthRequest): Promise<AuthResponse> {
     if (!parameters.endUserIp) {
       throw Error("Missing required argument endUserIp.");
     }
 
-    return await this._call<AuthArguments, SignAndAuthResponse>(
-      "auth",
+    return await this._call<AuthRequest, AuthResponse>(
+      BankIdMethod.auth,
       parameters
     );
   }
 
-  async sign(parameters: SignArguments): Promise<SignAndAuthResponse> {
+  async sign(parameters: SignRequest): Promise<SignResponse> {
     if (!parameters.endUserIp || !parameters.userVisibleData) {
       throw Error("Missing required arguments: endUserIp, userVisibleData.");
     }
@@ -158,28 +220,28 @@ export class BankIdClient {
         : undefined
     };
 
-    return await this._call<SignArguments, SignAndAuthResponse>(
-      "sign",
+    return await this._call<SignRequest, SignResponse>(
+      BankIdMethod.sign,
       parameters
     );
   }
 
-  async collect(parameters: CollectOrCancelArguments) {
-    return await this._call<CollectOrCancelArguments, CollectResponse>(
-      "collect",
+  async collect(parameters: CollectRequest) {
+    return await this._call<CollectRequest, CollectResponse>(
+      BankIdMethod.collect,
       parameters
     );
   }
 
-  async cancel(parameters: CollectOrCancelArguments): Promise<CancelResponse> {
-    return await this._call<CollectOrCancelArguments, CancelResponse>(
-      "cancel",
+  async cancel(parameters: CollectRequest): Promise<CancelResponse> {
+    return await this._call<CollectRequest, CancelResponse>(
+      BankIdMethod.cancel,
       parameters
     );
   }
 
   async authenticateAndCollect(
-    parameters: AuthArguments
+    parameters: AuthRequest
   ): Promise<CollectResponse> {
     try {
       const authResponse = await this.authenticate(parameters);
@@ -190,7 +252,7 @@ export class BankIdClient {
     }
   }
 
-  async signAndCollect(parameters: SignArguments): Promise<CollectResponse> {
+  async signAndCollect(parameters: SignRequest): Promise<CollectResponse> {
     try {
       const signResponse = await this.sign(parameters);
 
@@ -219,7 +281,10 @@ export class BankIdClient {
     });
   }
 
-  async _call<req, res>(method: BankIdMethod, payload: req): Promise<res> {
+  async _call<req extends BankIdRequest, res extends BankIdResponse>(
+    method: BankIdMethod,
+    payload: req
+  ): Promise<res> {
     return await new Promise((resolve, reject) => {
       this.axios
         .post<res>(this.baseUrl + method, payload)
