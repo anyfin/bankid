@@ -4,7 +4,7 @@ First, follow the instructions [here](https://www.bankid.com/assets/bankid/rp/ho
 When you have created a test identity (at https://demo.bankid.com/), and downloaded the test app, you can run:
 
 ```
-yarn test
+yarn test <fill_in_mobile_device_ip> <fill_in_test_personal_number>
 ```
 
 to go through a manual testing cycle of the library.
