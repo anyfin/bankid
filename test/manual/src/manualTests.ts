@@ -82,8 +82,8 @@ async function main() {
     console.log("starting to test /sign and /cancel");
 
     const response = await client.sign({
-      endUserIp: "212.112.184.253",
-      personalNumber: "195501069321",
+      endUserIp: ip,
+      personalNumber: personalNumber,
       userVisibleData:
         "this is a cancellation test - please DO NOT fill in your verification code"
     });
