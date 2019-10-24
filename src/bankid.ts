@@ -1,9 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as https from "https";
-import { AxiosInstance } from "axios";
-
-const axios = require("axios").default;
+import axios, { AxiosError, AxiosInstance } from "axios";
 
 //
 // Type definitions for /auth
@@ -113,15 +111,17 @@ export enum BankIdErrorCode {
   "Maintenance"
 }
 
+export const REQUEST_FAILED_ERROR = "BANKID_NO_RESPONSE";
+
 //
 // Collection of overarching types
 //
 
 export enum BankIdMethod {
-  "auth",
-  "sign",
-  "collect",
-  "cancel"
+  auth = "auth",
+  sign = "sign",
+  collect = "collect",
+  cancel = "cancel"
 }
 
 export type BankIdRequest =
@@ -142,7 +142,7 @@ export type BankIdResponse =
 
 interface BankIdClientSettings {
   production: boolean;
-  refreshInterval: number;
+  refreshInterval?: number;
   pfx?: string;
   passphrase?: string;
   ca?: string;
@@ -199,10 +199,7 @@ export class BankIdClient {
       throw Error("Missing required argument endUserIp.");
     }
 
-    return await this._call<AuthRequest, AuthResponse>(
-      BankIdMethod.auth,
-      parameters
-    );
+    return this._call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
   }
 
   async sign(parameters: SignRequest): Promise<SignResponse> {
@@ -220,21 +217,18 @@ export class BankIdClient {
         : undefined
     };
 
-    return await this._call<SignRequest, SignResponse>(
-      BankIdMethod.sign,
-      parameters
-    );
+    return this._call<SignRequest, SignResponse>(BankIdMethod.sign, parameters);
   }
 
   async collect(parameters: CollectRequest) {
-    return await this._call<CollectRequest, CollectResponse>(
+    return this._call<CollectRequest, CollectResponse>(
       BankIdMethod.collect,
       parameters
     );
   }
 
   async cancel(parameters: CollectRequest): Promise<CancelResponse> {
-    return await this._call<CollectRequest, CancelResponse>(
+    return this._call<CollectRequest, CancelResponse>(
       BankIdMethod.cancel,
       parameters
     );
@@ -243,33 +237,27 @@ export class BankIdClient {
   async authenticateAndCollect(
     parameters: AuthRequest
   ): Promise<CollectResponse> {
-    try {
-      const authResponse = await this.authenticate(parameters);
+    const authResponse = await this.authenticate(parameters);
 
-      return await this._awaitPendingCollect(authResponse.orderRef);
-    } catch (e) {
-      throw e;
-    }
+    return this._awaitPendingCollect(authResponse.orderRef);
   }
 
   async signAndCollect(parameters: SignRequest): Promise<CollectResponse> {
-    try {
-      const signResponse = await this.sign(parameters);
+    const signResponse = await this.sign(parameters);
 
-      return await this._awaitPendingCollect(signResponse.orderRef);
-    } catch (e) {
-      throw e;
-    }
+    return this._awaitPendingCollect(signResponse.orderRef);
   }
 
   async _awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
-    return await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const timer = setInterval(() => {
         this.collect({ orderRef })
           .then(response => {
             if (response.status === "complete") {
+              clearInterval(timer);
               resolve(response);
             } else if (response.status === "failed") {
+              clearInterval(timer);
               reject(response);
             }
           })
@@ -291,8 +279,20 @@ export class BankIdClient {
         .then(response => {
           resolve(response.data);
         })
-        .catch(error => {
-          reject(error.response.data);
+        .catch((error: AxiosError) => {
+          let thrownError;
+
+          if (error.response) {
+            thrownError = new Error(error.response.data.errorCode);
+            thrownError.details = error.response.data.details;
+          } else if (error.request) {
+            thrownError = new Error(REQUEST_FAILED_ERROR);
+            thrownError.request = error.request;
+          } else {
+            thrownError = error;
+          }
+
+          reject(thrownError);
         });
     });
   }
