@@ -11,21 +11,21 @@ Npm module to simplify integration with the Swedish [Bank ID](https://www.bankid
 ```javascript
 const BankId = require("bankid");
 
-const bankid = new BankId();
-const pno = "YYYYMMDD-XXXX";
+const client = new BankId.BankIdClient();
+const pno = "YYYYMMDDXXXX";
 
-bankid
-  .authenticateAndCollect("127.0.0.1", pno)
+client
+  .authenticateAndCollect({ pno: pno, endUserIp: "127.0.0.1" })
   .then(res => console.log(res.completionData))
   .catch(console.error);
 ```
 
 As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v2.13.pdf) there's four main methods (arguments marked with `*` are required)
 
-- `authenticate(endUserIp*, personalNumber, requirement)`
-- `sign(endUserIp*, personalNumber, userVisibleData*, userNonVisibleData, requirement)`
-- `collect(orderRef*)`
-- `cancel(orderRef*)`
+- `authenticate({endUserIp*, personalNumber, requirement})`
+- `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userNonVisibleData})`
+- `collect({orderRef*})`
+- `cancel({orderRef*})`
 
 In addition _bankid_ provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above)
 
@@ -37,12 +37,16 @@ Full example _not_ using the convenience methods:
 ```javascript
 const BankId = require("bankid");
 
-const bankid = new BankId();
-const pno = "YYYYMMDD-XXXX";
+const client = new BankId.BankIdClient();
+const pno = "YYYYMMDDXXXX";
 const message = "some message displayed to the user to sign";
 
-bankid
-  .sign("127.0.0.1", pno, message)
+client
+  .sign({
+    endUserIp: "127.0.0.1",
+    personalNumber: pno,
+    userVisibleData: message
+  })
   .then(res => {
     const timer = setInterval(() => {
       const done = () => clearInterval(timer);
@@ -71,19 +75,21 @@ bankid
 By default bankid is instantiated with the following configuration pointing to the Bank ID Test Environment
 
 ```javascript
-{
+settings = {
   refreshInterval: 1000, // how often to poll status changes for authenticateAndCollect and signAndCollect
-	production: false, // use test environment
-	pfx: "PATH_TO_TEST_ENV_PFX", // test environment
-	passphrase: "TEST_ENV_PASSPHRASE", // test environment
-	ca: "CERTIFICATE", // dynamically set depending on the "production" setting unless explicitely provided
-}
+  production: false, // use test environment
+  pfx: "PATH_TO_TEST_ENV_PFX", // test environment
+  passphrase: "TEST_ENV_PASSPHRASE", // test environment
+  ca: "CERTIFICATE" // dynamically set depending on the "production" setting unless explicitely provided
+};
 ```
 
 For production you'll want to pass in your own pfx and passphrase instead:
 
 ```javascript
-const bankid = new BankId({
+const BankId = require("bankid");
+
+const client = new BankId.BankIdClient({
   production: true,
   pfx: "PATH_TO_YOUR_PFX", // alternatively also accepts buffer
   passphrase: "YOUR_PASSPHRASE"
@@ -107,7 +113,9 @@ Example:
 From the current directory you would run the script with `node src/main.js` and provide the pfx path like this
 
 ```javascript
-const bankid = new Bankid({
+const BankId = require("bankid");
+
+const client = new BankId.BankIdClient({
   pfx: "certs/bankid.pfx"
 });
 ```
