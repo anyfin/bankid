@@ -143,7 +143,7 @@ export type BankIdResponse =
 interface BankIdClientSettings {
   production: boolean;
   refreshInterval?: number;
-  pfx?: string;
+  pfx?: string | Buffer;
   passphrase?: string;
   ca?: string;
 }
