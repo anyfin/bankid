@@ -145,7 +145,7 @@ interface BankIdClientSettings {
   refreshInterval?: number;
   pfx?: string | Buffer;
   passphrase?: string;
-  ca?: string;
+  ca?: string | Buffer;
 }
 
 //
