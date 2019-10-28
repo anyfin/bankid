@@ -1,0 +1,15 @@
+{
+  "name": "manual",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "test": "node lib/manualTests.js",
+    "pretest": "yarn build"
+  },
+  "dependencies": {
+    "bankid": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "^3.6.4"
+  }
+}

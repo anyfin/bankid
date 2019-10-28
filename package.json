@@ -13,7 +13,7 @@
     "url": "git+https://github.com/anyfin/bankid.git"
   },
   "scripts": {
-    "build": "babel -d lib/ src/",
+    "build": "tsc",
     "prepublish": "yarn build"
   },
   "author": "Sven Perkmann",
@@ -23,11 +23,11 @@
     "url": "https://github.com/anyfin/bankid/issues"
   },
   "dependencies": {
+    "@types/node": "^12.11.5",
     "axios": "^0.18.1"
   },
   "devDependencies": {
-    "@babel/cli": "^7.6.4",
-    "@babel/core": "^7.6.4",
-    "@babel/preset-env": "^7.6.3"
+    "typescript": "^3.6.4",
+    "prettier": "^1.18.2"
   }
 }
