@@ -15,7 +15,10 @@ const client = new BankId.BankIdClient();
 const pno = "YYYYMMDDXXXX";
 
 client
-  .authenticateAndCollect({ pno: pno, endUserIp: "127.0.0.1" })
+  .authenticateAndCollect({ 
+    personalNumber: pno,
+    endUserIp: "127.0.0.1"
+  })
   .then(res => console.log(res.completionData))
   .catch(console.error);
 ```
