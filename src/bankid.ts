@@ -165,7 +165,7 @@ export class BankIdClient {
       pfx: path.resolve(
         __dirname,
         "../cert/",
-        "FPTestcert2_20150818_102329.pfx"
+        "FPTestcert3_20200618.p12"
       ),
       passphrase: "qwerty123",
       // certificate is provided by package by default
