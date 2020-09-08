@@ -23,7 +23,7 @@ client
   .catch(console.error);
 ```
 
-As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.2.2.pdf) there's four main methods (arguments marked with `*` are required)
+As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.4.pdf) there's four main methods (arguments marked with `*` are required)
 
 - `authenticate({endUserIp*, personalNumber, requirement})`
 - `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userNonVisibleData})`
