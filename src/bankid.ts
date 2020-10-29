@@ -15,6 +15,8 @@ export interface AuthRequest {
 
 export interface AuthResponse {
   autoStartToken: string;
+  qrStartSecret: string;
+  qrStartToken: string;
   orderRef: string;
 }
 
