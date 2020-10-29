@@ -190,8 +190,8 @@ export class BankIdClient {
     this.axios = this._createAxiosInstance();
 
     this.baseUrl = this.options.production
-      ? "https://appapi2.bankid.com/rp/v5/"
-      : "https://appapi2.test.bankid.com/rp/v5/";
+      ? "https://appapi2.bankid.com/rp/v5.1/"
+      : "https://appapi2.test.bankid.com/rp/v5.1/";
   }
 
   async authenticate(parameters: AuthRequest): Promise<AuthResponse> {
