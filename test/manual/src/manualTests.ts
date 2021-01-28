@@ -1,6 +1,6 @@
 import { BankIdClient } from "bankid";
 
-const DELAY_BETWEEN_REQUETS = 10000; //milliseconds
+const DELAY_BETWEEN_REQUETS = 10000; // milliseconds
 
 async function main() {
   const ip = process.argv[2];
@@ -8,20 +8,20 @@ async function main() {
 
   if (!ip || !personalNumber) {
     console.log(
-      "Please provide an IP and personal number connected to a test BankId: `yarn test <ip> <pon>`"
+      "Please provide an IP and personal number connected to a test BankId: `yarn test <ip> <pon>`",
     );
     process.exit(1);
   }
 
   const client = new BankIdClient({
-    production: false
+    production: false,
   });
 
   try {
     console.log("starting to test /auth");
     const authRequest = await client.authenticate({
       endUserIp: ip,
-      personalNumber: personalNumber
+      personalNumber: personalNumber,
     });
 
     console.log(authRequest);
@@ -39,7 +39,7 @@ async function main() {
     const signRequest = await client.sign({
       endUserIp: ip,
       personalNumber: personalNumber,
-      userVisibleData: "this is a test"
+      userVisibleData: "this is a test",
     });
 
     console.log(signRequest);
@@ -56,7 +56,7 @@ async function main() {
   client
     .authenticateAndCollect({
       endUserIp: ip,
-      personalNumber: personalNumber
+      personalNumber: personalNumber,
     })
     .then(() => console.log("authenticateAndCollect successful"))
     .catch(console.log);
@@ -69,7 +69,7 @@ async function main() {
     .signAndCollect({
       endUserIp: ip,
       personalNumber: personalNumber,
-      userVisibleData: "this is a second test"
+      userVisibleData: "this is a second test",
     })
     .then(() => {
       console.log("signAndCollect successful");
@@ -85,7 +85,7 @@ async function main() {
       endUserIp: ip,
       personalNumber: personalNumber,
       userVisibleData:
-        "this is a cancellation test - please DO NOT fill in your verification code"
+        "this is a cancellation test - please DO NOT fill in your verification code",
     });
 
     await cancelOrderIn(client, response.orderRef, 5000);
@@ -105,7 +105,7 @@ function delay(ms: number) {
 async function cancelOrderIn(
   client: BankIdClient,
   orderRef: string,
-  ms: number
+  ms: number,
 ) {
   await delay(ms);
 

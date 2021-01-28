@@ -15,9 +15,9 @@ const client = new BankId.BankIdClient();
 const pno = "YYYYMMDDXXXX";
 
 client
-  .authenticateAndCollect({ 
+  .authenticateAndCollect({
     personalNumber: pno,
-    endUserIp: "127.0.0.1"
+    endUserIp: "127.0.0.1",
   })
   .then(res => console.log(res.completionData))
   .catch(console.error);
@@ -48,7 +48,7 @@ client
   .sign({
     endUserIp: "127.0.0.1",
     personalNumber: pno,
-    userVisibleData: message
+    userVisibleData: message,
   })
   .then(res => {
     const timer = setInterval(() => {
@@ -83,7 +83,7 @@ settings = {
   production: false, // use test environment
   pfx: "PATH_TO_TEST_ENV_PFX", // test environment
   passphrase: "TEST_ENV_PASSPHRASE", // test environment
-  ca: "CERTIFICATE" // dynamically set depending on the "production" setting unless explicitely provided
+  ca: "CERTIFICATE", // dynamically set depending on the "production" setting unless explicitely provided
 };
 ```
 
@@ -95,7 +95,7 @@ const BankId = require("bankid");
 const client = new BankId.BankIdClient({
   production: true,
   pfx: "PATH_TO_YOUR_PFX", // alternatively also accepts buffer
-  passphrase: "YOUR_PASSPHRASE"
+  passphrase: "YOUR_PASSPHRASE",
 });
 ```
 
@@ -119,6 +119,6 @@ From the current directory you would run the script with `node src/main.js` and 
 const BankId = require("bankid");
 
 const client = new BankId.BankIdClient({
-  pfx: "certs/bankid.pfx"
+  pfx: "certs/bankid.pfx",
 });
 ```
