@@ -1,1 +1,4 @@
 src/
+
+.prettierrc.json
+yarn.lock
