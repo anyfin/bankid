@@ -1,6 +1,7 @@
-import * as path from "path";
 import * as fs from "fs";
 import * as https from "https";
+import * as path from "path";
+
 import axios, { AxiosError, AxiosInstance } from "axios";
 
 //
@@ -110,7 +111,7 @@ export enum BankIdErrorCode {
   "requestTimeout",
   "unsupportedMediaType",
   "internalError",
-  "Maintenance"
+  "Maintenance",
 }
 
 export const REQUEST_FAILED_ERROR = "BANKID_NO_RESPONSE";
@@ -123,7 +124,7 @@ export enum BankIdMethod {
   auth = "auth",
   sign = "sign",
   collect = "collect",
-  cancel = "cancel"
+  cancel = "cancel",
 }
 
 export type BankIdRequest =
@@ -151,38 +152,63 @@ interface BankIdClientSettings {
 }
 
 //
+// Error types
+//
+
+export class BankIdError extends Error {
+  readonly code: BankIdErrorCode;
+  readonly details?: string;
+
+  constructor(code: BankIdErrorCode, details?: string) {
+    super(REQUEST_FAILED_ERROR);
+    Error.captureStackTrace(this, this.constructor);
+
+    this.name = "BankIdError";
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export class RequestError extends Error {
+  readonly request?: any;
+
+  constructor(request?: any) {
+    super(REQUEST_FAILED_ERROR);
+    Error.captureStackTrace(this, this.constructor);
+
+    this.name = "RequestError";
+    this.request = request;
+  }
+}
+
+//
 // Client implementation
 //
 
 export class BankIdClient {
-  readonly options: BankIdClientSettings;
+  readonly options: Required<BankIdClientSettings>;
   readonly axios: AxiosInstance;
   readonly baseUrl: string;
 
   constructor(options?: BankIdClientSettings) {
     this.options = {
-      refreshInterval: 2000,
       production: false,
+      refreshInterval: 2000,
       // defaults for test environment
-      pfx: path.resolve(
-        __dirname,
-        "../cert/",
-        "FPTestcert3_20200618.p12"
-      ),
       passphrase: "qwerty123",
-      // certificate is provided by package by default
-      ca: undefined,
-      ...options
-    };
+      pfx: path.resolve(__dirname, "../cert/", "FPTestcert3_20200618.p12"),
+      ...options,
+    } as Required<BankIdClientSettings>;
 
     if (this.options.production) {
-      if (!options.pfx || !options.passphrase) {
+      if (!options?.pfx || !options?.passphrase) {
         throw Error(
-          "BankId requires the pfx and passphrase in production mode"
+          "BankId requires the pfx and passphrase in production mode",
         );
       }
     }
 
+    // Provide certificate by default
     if (this.options.ca === undefined) {
       this.options.ca = this.options.production
         ? path.resolve(__dirname, "../cert/", "prod.ca")
@@ -212,11 +238,11 @@ export class BankIdClient {
     parameters = {
       ...parameters,
       userVisibleData: Buffer.from(parameters.userVisibleData).toString(
-        "base64"
+        "base64",
       ),
       userNonVisibleData: parameters.userNonVisibleData
         ? Buffer.from(parameters.userNonVisibleData).toString("base64")
-        : undefined
+        : undefined,
     };
 
     return this._call<SignRequest, SignResponse>(BankIdMethod.sign, parameters);
@@ -225,19 +251,19 @@ export class BankIdClient {
   async collect(parameters: CollectRequest) {
     return this._call<CollectRequest, CollectResponse>(
       BankIdMethod.collect,
-      parameters
+      parameters,
     );
   }
 
   async cancel(parameters: CollectRequest): Promise<CancelResponse> {
     return this._call<CollectRequest, CancelResponse>(
       BankIdMethod.cancel,
-      parameters
+      parameters,
     );
   }
 
   async authenticateAndCollect(
-    parameters: AuthRequest
+    parameters: AuthRequest,
   ): Promise<CollectResponse> {
     const authResponse = await this.authenticate(parameters);
 
@@ -271,13 +297,13 @@ export class BankIdClient {
     });
   }
 
-  async _call<req extends BankIdRequest, res extends BankIdResponse>(
+  async _call<Req extends BankIdRequest, Res extends BankIdResponse>(
     method: BankIdMethod,
-    payload: req
-  ): Promise<res> {
+    payload: Req,
+  ): Promise<Res> {
     return await new Promise((resolve, reject) => {
       this.axios
-        .post<res>(this.baseUrl + method, payload)
+        .post<Res>(this.baseUrl + method, payload)
         .then(response => {
           resolve(response.data);
         })
@@ -285,11 +311,12 @@ export class BankIdClient {
           let thrownError;
 
           if (error.response) {
-            thrownError = new Error(error.response.data.errorCode);
-            thrownError.details = error.response.data.details;
+            thrownError = new BankIdError(
+              error.response.data.errorCode,
+              error.response.data.details,
+            );
           } else if (error.request) {
-            thrownError = new Error(REQUEST_FAILED_ERROR);
-            thrownError.request = error.request;
+            thrownError = new RequestError(error.request);
           } else {
             thrownError = error;
           }
@@ -299,19 +326,20 @@ export class BankIdClient {
     });
   }
 
-  _createAxiosInstance() {
-    const opts = this.options,
-      ca = Buffer.isBuffer(opts.ca)
-        ? opts.ca
-        : fs.readFileSync(opts.ca, "utf-8"),
-      pfx = Buffer.isBuffer(opts.pfx) ? opts.pfx : fs.readFileSync(opts.pfx),
-      passphrase = opts.passphrase;
+  _createAxiosInstance(): AxiosInstance {
+    const ca = Buffer.isBuffer(this.options.ca)
+      ? this.options.ca
+      : fs.readFileSync(this.options.ca, "utf-8");
+    const pfx = Buffer.isBuffer(this.options.pfx)
+      ? this.options.pfx
+      : fs.readFileSync(this.options.pfx);
+    const passphrase = this.options.passphrase;
 
     return axios.create({
       httpsAgent: new https.Agent({ pfx, passphrase, ca }),
       headers: {
-        "Content-Type": "application/json"
-      }
+        "Content-Type": "application/json",
+      },
     });
   }
 }
