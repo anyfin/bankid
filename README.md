@@ -1,10 +1,15 @@
 # bankid
 
-Npm module to simplify integration with the Swedish [Bank ID](https://www.bankid.com/en/) service for user authentication and signing processes.
+A npm module to simplify integration with the Swedish [Bank ID](https://www.bankid.com/en/) service for user authentication and signing processes.
 
 ## Installation
 
-> npm install --save bankid
+```sh
+# If you prefer npm
+npm install --save bankid
+# If you prefer yarn
+yarn install bankid
+```
 
 ## Usage
 
@@ -23,14 +28,15 @@ client
   .catch(console.error);
 ```
 
-As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.4.pdf) there's four main methods (arguments marked with `*` are required)
+As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.4.pdf),
+there' four main methods (arguments marked with `*` are required)
 
 - `authenticate({endUserIp*, personalNumber, requirement})`
 - `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userNonVisibleData})`
 - `collect({orderRef*})`
 - `cancel({orderRef*})`
 
-In addition _bankid_ provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above)
+Additionally, `bankid` provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above):
 
 - `authenticateAndCollect(...)`
 - `signAndCollect(...)`
@@ -75,7 +81,7 @@ client
 
 ## Configuration
 
-By default bankid is instantiated with the following configuration pointing to the Bank ID Test Environment
+By default, `bankid` is instantiated with the following configuration pointing to the Bank ID Test Environment:
 
 ```javascript
 settings = {
@@ -87,7 +93,7 @@ settings = {
 };
 ```
 
-For production you'll want to pass in your own pfx and passphrase instead:
+For production, you'll want to pass in your own pfx and passphrase instead:
 
 ```javascript
 const BankId = require("bankid");
@@ -101,9 +107,7 @@ const client = new BankId.BankIdClient({
 
 ### PFX path
 
-When providing a pfx path it is expected to be based on the current working directory from where the script is run.
-
-Example:
+When providing a pfx path, it is expected to be based on the current working directory from where the script is run:
 
 ```
 .
@@ -113,7 +117,7 @@ Example:
 │   └── main.js
 ```
 
-From the current directory you would run the script with `node src/main.js` and provide the pfx path like this
+From the current directory you would run the script with `node src/main.js` and provide the pfx path:
 
 ```javascript
 const BankId = require("bankid");
@@ -122,3 +126,9 @@ const client = new BankId.BankIdClient({
   pfx: "certs/bankid.pfx",
 });
 ```
+
+# Deploy/Publish
+
+In order to deploy new versions, bump the version in `package.json` and create a new GitHub release.
+
+GitHub Actions should automagically release it to npm. ✨
