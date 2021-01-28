@@ -127,7 +127,7 @@ const client = new BankId.BankIdClient({
 });
 ```
 
-# Deploy/Publish
+## Deploy/Publish
 
 In order to deploy new versions, bump the version in `package.json` and create a new GitHub release.
 
