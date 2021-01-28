@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "sourceMap": true,
-    "downlevelIteration": true,
-    "target": "es6",
-    "lib": ["es2015", "es2016", "dom", "ESNEXT"],
+    "lib": ["ESNext"],
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "outDir": "./lib",
-    "declaration": true
+    "sourceMap": true,
+    "strict": true,
+    "target": "ES2018"
   },
   "include": ["src/manualTests.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"]
