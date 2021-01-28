@@ -104,14 +104,15 @@ export interface ErrorResponse {
 }
 
 export enum BankIdErrorCode {
-  "alreadyInProgress",
-  "invalidParameters",
-  "unauthorized",
-  "notFound",
-  "requestTimeout",
-  "unsupportedMediaType",
-  "internalError",
-  "Maintenance",
+  ALREADY_IN_PROGRESS = "alreadyInProgress",
+  INVALID_PARAMETERS = "invalidParameters",
+  UNAUTHORIZED = "unauthorized",
+  NOT_FOUND = "notFound",
+  METHOD_NOT_ALLOWED = "methodNotAllowed",
+  REQUEST_TIMEOUT = "requestTimeout",
+  UNSUPPORTED_MEDIA_TYPE = "unsupportedMediaType",
+  INTERNAL_ERROR = "internalError",
+  MAINTENANCE = "maintenance",
 }
 
 export const REQUEST_FAILED_ERROR = "BANKID_NO_RESPONSE";
@@ -160,7 +161,7 @@ export class BankIdError extends Error {
   readonly details?: string;
 
   constructor(code: BankIdErrorCode, details?: string) {
-    super(REQUEST_FAILED_ERROR);
+    super(code);
     Error.captureStackTrace(this, this.constructor);
 
     this.name = "BankIdError";
@@ -222,7 +223,7 @@ export class BankIdClient {
       : "https://appapi2.test.bankid.com/rp/v5.1/";
   }
 
-  async authenticate(parameters: AuthRequest): Promise<AuthResponse> {
+  authenticate(parameters: AuthRequest): Promise<AuthResponse> {
     if (!parameters.endUserIp) {
       throw Error("Missing required argument endUserIp.");
     }
@@ -230,7 +231,7 @@ export class BankIdClient {
     return this._call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
   }
 
-  async sign(parameters: SignRequest): Promise<SignResponse> {
+  sign(parameters: SignRequest): Promise<SignResponse> {
     if (!parameters.endUserIp || !parameters.userVisibleData) {
       throw Error("Missing required arguments: endUserIp, userVisibleData.");
     }
@@ -248,14 +249,14 @@ export class BankIdClient {
     return this._call<SignRequest, SignResponse>(BankIdMethod.sign, parameters);
   }
 
-  async collect(parameters: CollectRequest) {
+  collect(parameters: CollectRequest) {
     return this._call<CollectRequest, CollectResponse>(
       BankIdMethod.collect,
       parameters,
     );
   }
 
-  async cancel(parameters: CollectRequest): Promise<CancelResponse> {
+  cancel(parameters: CollectRequest): Promise<CancelResponse> {
     return this._call<CollectRequest, CancelResponse>(
       BankIdMethod.cancel,
       parameters,
@@ -276,7 +277,7 @@ export class BankIdClient {
     return this._awaitPendingCollect(signResponse.orderRef);
   }
 
-  async _awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
+  _awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
     return new Promise((resolve, reject) => {
       const timer = setInterval(() => {
         this.collect({ orderRef })
@@ -297,11 +298,11 @@ export class BankIdClient {
     });
   }
 
-  async _call<Req extends BankIdRequest, Res extends BankIdResponse>(
+  _call<Req extends BankIdRequest, Res extends BankIdResponse>(
     method: BankIdMethod,
     payload: Req,
   ): Promise<Res> {
-    return await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this.axios
         .post<Res>(this.baseUrl + method, payload)
         .then(response => {
@@ -311,6 +312,7 @@ export class BankIdClient {
           let thrownError;
 
           if (error.response) {
+            console.log(error.response.data.errorCode);
             thrownError = new BankIdError(
               error.response.data.errorCode,
               error.response.data.details,
