@@ -28,7 +28,7 @@ client
   .catch(console.error);
 ```
 
-As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.4.pdf),
+As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.5.pdf),
 there' four main methods (arguments marked with `*` are required)
 
 - `authenticate({endUserIp*, personalNumber, requirement})`
