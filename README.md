@@ -59,8 +59,7 @@ client
   .then(res => {
     const timer = setInterval(() => {
       const done = () => clearInterval(timer);
-
-      bankid
+      client
         .collect(res.orderRef)
         .then(res => {
           if (res.status === "complete") {
