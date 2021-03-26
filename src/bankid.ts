@@ -312,7 +312,6 @@ export class BankIdClient {
           let thrownError;
 
           if (error.response) {
-            console.log(error.response.data.errorCode);
             thrownError = new BankIdError(
               error.response.data.errorCode,
               error.response.data.details,
