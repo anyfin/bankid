@@ -195,9 +195,6 @@ export class BankIdClient {
     this.options = {
       production: false,
       refreshInterval: 2000,
-      // defaults for test environment
-      passphrase: "qwerty123",
-      pfx: path.resolve(__dirname, "../cert/", "FPTestcert3_20200618.p12"),
       ...options,
     } as Required<BankIdClientSettings>;
 
@@ -206,6 +203,19 @@ export class BankIdClient {
         throw Error(
           "BankId requires the pfx and passphrase in production mode",
         );
+      }
+    } else {
+      // Provide default PFX & passphrase in test
+      if (this.options.pfx === undefined) {
+        this.options.pfx = path.resolve(
+          __dirname,
+          "../cert/",
+          "FPTestcert3_20200618.p12",
+        );
+      }
+
+      if (this.options.passphrase === undefined) {
+        this.options.passphrase = "qwerty123";
       }
     }
 
