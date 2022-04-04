@@ -9,6 +9,6 @@
     "strict": true,
     "target": "ES2018"
   },
-  "include": ["src/**/*"],
+  "include": ["src"],
   "exclude": ["node_modules", "**/*.spec.ts"]
 }

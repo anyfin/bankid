@@ -2,7 +2,8 @@ import * as fs from "fs";
 import * as https from "https";
 import * as path from "path";
 
-import axios, { AxiosError, AxiosInstance } from "axios";
+import type { AxiosInstance } from "axios";
+import axios from "axios";
 
 //
 // Type definitions for /auth
@@ -35,6 +36,7 @@ interface AuthOptionalRequirements {
 
 export interface SignRequest extends AuthRequest {
   userVisibleData: string;
+  userVisibleDataFormat?: "simpleMarkdownV1";
   userNonVisibleData?: string;
 }
 
@@ -200,7 +202,7 @@ export class BankIdClient {
 
     if (this.options.production) {
       if (!options?.pfx || !options?.passphrase) {
-        throw Error(
+        throw new Error(
           "BankId requires the pfx and passphrase in production mode",
         );
       }
@@ -235,7 +237,7 @@ export class BankIdClient {
 
   authenticate(parameters: AuthRequest): Promise<AuthResponse> {
     if (!parameters.endUserIp) {
-      throw Error("Missing required argument endUserIp.");
+      throw new Error("Missing required argument endUserIp.");
     }
 
     return this._call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
@@ -243,7 +245,15 @@ export class BankIdClient {
 
   sign(parameters: SignRequest): Promise<SignResponse> {
     if (!parameters.endUserIp || !parameters.userVisibleData) {
-      throw Error("Missing required arguments: endUserIp, userVisibleData.");
+      throw new Error(
+        "Missing required arguments: endUserIp, userVisibleData.",
+      );
+    }
+    if (
+      parameters.userVisibleDataFormat != null &&
+      parameters.userVisibleDataFormat !== "simpleMarkdownV1"
+    ) {
+      throw new Error("userVisibleDataFormat can only be simpleMarkdownV1.");
     }
 
     parameters = {
@@ -318,18 +328,18 @@ export class BankIdClient {
         .then(response => {
           resolve(response.data);
         })
-        .catch((error: AxiosError) => {
-          let thrownError;
+        .catch((error: unknown) => {
+          let thrownError = error;
 
-          if (error.response) {
-            thrownError = new BankIdError(
-              error.response.data.errorCode,
-              error.response.data.details,
-            );
-          } else if (error.request) {
-            thrownError = new RequestError(error.request);
-          } else {
-            thrownError = error;
+          if (axios.isAxiosError(error)) {
+            if (error.response) {
+              thrownError = new BankIdError(
+                error.response.data.errorCode,
+                error.response.data.details,
+              );
+            } else if (error.request) {
+              thrownError = new RequestError(error.request);
+            }
           }
 
           reject(thrownError);
