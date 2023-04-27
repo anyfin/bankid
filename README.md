@@ -131,3 +131,13 @@ const client = new BankId.BankIdClient({
 In order to deploy new versions, bump the version in `package.json` and create a new GitHub release.
 
 GitHub Actions should automagically release it to npm. ✨
+
+## Ownership
+
+Repo ownership: [Jeff Trinidad - @jefftrinidad29](https://github.com/jefftrinidad29) \
+Last audit: 2023-04-27 by [@jefftrinidad29](https://github.com/jefftrinidad29)
+
+# Audit Notes
+> 27th April 2023 by @jefftrinidad29
+- Upgraded all non-critical dependencies
+- yarn audit fix
