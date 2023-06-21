@@ -228,7 +228,7 @@ export class BankIdClient {
         : path.resolve(__dirname, "../cert/", "test.ca");
     }
 
-    this.axios = this._createAxiosInstance();
+    this.axios = this.#createAxiosInstance();
 
     this.baseUrl = this.options.production
       ? "https://appapi2.bankid.com/rp/v5.1/"
@@ -240,7 +240,7 @@ export class BankIdClient {
       throw new Error("Missing required argument endUserIp.");
     }
 
-    return this._call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
+    return this.#call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
   }
 
   sign(parameters: SignRequest): Promise<SignResponse> {
@@ -266,18 +266,18 @@ export class BankIdClient {
         : undefined,
     };
 
-    return this._call<SignRequest, SignResponse>(BankIdMethod.sign, parameters);
+    return this.#call<SignRequest, SignResponse>(BankIdMethod.sign, parameters);
   }
 
   collect(parameters: CollectRequest) {
-    return this._call<CollectRequest, CollectResponse>(
+    return this.#call<CollectRequest, CollectResponse>(
       BankIdMethod.collect,
       parameters,
     );
   }
 
   cancel(parameters: CollectRequest): Promise<CancelResponse> {
-    return this._call<CollectRequest, CancelResponse>(
+    return this.#call<CollectRequest, CancelResponse>(
       BankIdMethod.cancel,
       parameters,
     );
@@ -287,17 +287,16 @@ export class BankIdClient {
     parameters: AuthRequest,
   ): Promise<CollectResponse> {
     const authResponse = await this.authenticate(parameters);
-
-    return this._awaitPendingCollect(authResponse.orderRef);
+    return this.#awaitPendingCollect(authResponse.orderRef);
   }
 
   async signAndCollect(parameters: SignRequest): Promise<CollectResponse> {
     const signResponse = await this.sign(parameters);
 
-    return this._awaitPendingCollect(signResponse.orderRef);
+    return this.#awaitPendingCollect(signResponse.orderRef);
   }
 
-  _awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
+  #awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
     return new Promise((resolve, reject) => {
       const timer = setInterval(() => {
         this.collect({ orderRef })
@@ -318,7 +317,7 @@ export class BankIdClient {
     });
   }
 
-  _call<Req extends BankIdRequest, Res extends BankIdResponse>(
+  #call<Req extends BankIdRequest, Res extends BankIdResponse>(
     method: BankIdMethod,
     payload: Req,
   ): Promise<Res> {
@@ -347,7 +346,7 @@ export class BankIdClient {
     });
   }
 
-  _createAxiosInstance(): AxiosInstance {
+  #createAxiosInstance(): AxiosInstance {
     const ca = Buffer.isBuffer(this.options.ca)
       ? this.options.ca
       : fs.readFileSync(this.options.ca, "utf-8");
