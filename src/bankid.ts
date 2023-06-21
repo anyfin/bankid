@@ -283,20 +283,25 @@ export class BankIdClient {
     );
   }
 
+  _awaitPendingCollect(orderRef: string) {
+    console.warn("This method has been renamed to 'awaitPendingCollect");
+    this.awaitPendingCollect(orderRef);
+  }
+
   async authenticateAndCollect(
     parameters: AuthRequest,
   ): Promise<CollectResponse> {
     const authResponse = await this.authenticate(parameters);
-    return this.#awaitPendingCollect(authResponse.orderRef);
+    return this.awaitPendingCollect(authResponse.orderRef);
   }
 
   async signAndCollect(parameters: SignRequest): Promise<CollectResponse> {
     const signResponse = await this.sign(parameters);
 
-    return this.#awaitPendingCollect(signResponse.orderRef);
+    return this.awaitPendingCollect(signResponse.orderRef);
   }
 
-  #awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
+  awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
     return new Promise((resolve, reject) => {
       const timer = setInterval(() => {
         this.collect({ orderRef })
