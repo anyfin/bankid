@@ -285,7 +285,7 @@ export class BankIdClient {
 
   _awaitPendingCollect(orderRef: string) {
     console.warn("This method has been renamed to 'awaitPendingCollect");
-    this.awaitPendingCollect(orderRef);
+    return this.awaitPendingCollect(orderRef);
   }
 
   async authenticateAndCollect(
