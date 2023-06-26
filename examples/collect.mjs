@@ -1,16 +1,21 @@
-import {BankIdClient} from "../lib/bankid.js";
+import { BankIdClient } from "../lib/bankid.js";
 
 const personalNumber = process.argv[2];
-const bankid = new BankIdClient({production: false});
+const bankid = new BankIdClient({ production: false });
 
 bankid
-  .sign({endUserIp: "127.0.0.1", personalNumber, userVisibleData: "visible",  userNonVisibleData: "invisible"})
+  .sign({
+    endUserIp: "127.0.0.1",
+    personalNumber,
+    userVisibleData: "visible",
+    userNonVisibleData: "invisible",
+  })
   .then(res => {
     const timer = setInterval(() => {
       const done = () => clearInterval(timer);
 
       bankid
-        .collect({orderRef: res.orderRef})
+        .collect({ orderRef: res.orderRef })
         .then(res => {
           console.log(res.status);
 
