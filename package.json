@@ -15,7 +15,7 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "yarn build",
-    "format": "prettier --write \"./**/*.{js,ts,json,md}\""
+    "format": "prettier --write \"./**/*.{mjs,js,ts,json,md}\""
   },
   "author": "Sven Perkmann",
   "license": "MIT",
