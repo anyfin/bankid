@@ -9,13 +9,17 @@ import axios from "axios";
 // Type definitions for /auth
 //
 
-export interface AuthRequest {
+export interface AuthRequestV5 {
   endUserIp: string;
   personalNumber?: string;
   requirement?: AuthOptionalRequirements;
 }
 
 export interface AuthResponse {
+  /**
+   * Use in deeplink to start BankId on same device.
+   * @example `bankid:///?autostarttoken=[TOKEN]&redirect=[RETURNURL]`
+   */
   autoStartToken: string;
   qrStartSecret: string;
   qrStartToken: string;
@@ -34,7 +38,7 @@ interface AuthOptionalRequirements {
 // Type definitions for /sign
 //
 
-export interface SignRequest extends AuthRequest {
+export interface SignRequest extends AuthRequestV5 {
   userVisibleData: string;
   userVisibleDataFormat?: "simpleMarkdownV1";
   userNonVisibleData?: string;
@@ -131,7 +135,7 @@ export enum BankIdMethod {
 }
 
 export type BankIdRequest =
-  | AuthRequest
+  | AuthRequestV5
   | SignRequest
   | CollectRequest
   | CancelRequest;
@@ -191,7 +195,8 @@ export class RequestError extends Error {
 export class BankIdClient {
   readonly options: Required<BankIdClientSettings>;
   readonly axios: AxiosInstance;
-  readonly baseUrl: string;
+
+  version = "v5.1";
 
   constructor(options?: BankIdClientSettings) {
     this.options = {
@@ -228,19 +233,22 @@ export class BankIdClient {
         : path.resolve(__dirname, "../cert/", "test.ca");
     }
 
-    this.axios = this.#createAxiosInstance();
+    const baseUrl = this.options.production
+      ? `https://appapi2.bankid.com/rp/${this.version}/`
+      : `https://appapi2.test.bankid.com/rp/${this.version}/`;
 
-    this.baseUrl = this.options.production
-      ? "https://appapi2.bankid.com/rp/v5.1/"
-      : "https://appapi2.test.bankid.com/rp/v5.1/";
+    this.axios = this.#createAxiosInstance(baseUrl);
   }
 
-  authenticate(parameters: AuthRequest): Promise<AuthResponse> {
+  authenticate(parameters: AuthRequestV5): Promise<AuthResponse> {
     if (!parameters.endUserIp) {
       throw new Error("Missing required argument endUserIp.");
     }
 
-    return this.#call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
+    return this.#call<AuthRequestV5, AuthResponse>(
+      BankIdMethod.auth,
+      parameters,
+    );
   }
 
   sign(parameters: SignRequest): Promise<SignResponse> {
@@ -289,7 +297,7 @@ export class BankIdClient {
   }
 
   async authenticateAndCollect(
-    parameters: AuthRequest,
+    parameters: AuthRequestV5,
   ): Promise<CollectResponse> {
     const authResponse = await this.authenticate(parameters);
     return this.awaitPendingCollect(authResponse.orderRef);
@@ -328,7 +336,7 @@ export class BankIdClient {
   ): Promise<Res> {
     return new Promise((resolve, reject) => {
       this.axios
-        .post<Res>(this.baseUrl + method, payload)
+        .post<Res>(method, payload)
         .then(response => {
           resolve(response.data);
         })
@@ -351,7 +359,7 @@ export class BankIdClient {
     });
   }
 
-  #createAxiosInstance(): AxiosInstance {
+  #createAxiosInstance(baseURL: string): AxiosInstance {
     const ca = Buffer.isBuffer(this.options.ca)
       ? this.options.ca
       : fs.readFileSync(this.options.ca, "utf-8");
@@ -361,10 +369,32 @@ export class BankIdClient {
     const passphrase = this.options.passphrase;
 
     return axios.create({
+      baseURL,
       httpsAgent: new https.Agent({ pfx, passphrase, ca }),
       headers: {
         "Content-Type": "application/json",
       },
     });
+  }
+}
+
+interface AuthOptionalRequirementsV6 {
+  pinCode: boolean;
+  cardReader?: "class1" | "class2";
+  mrtd: boolean;
+  certificatePolicies?: string[];
+  personalNumber: string;
+}
+
+export interface AuthRequestV6 {
+  endUserIp: string;
+  requirement?: AuthOptionalRequirementsV6;
+}
+
+export class BankIdClientV6 extends BankIdClient {
+  version = "v6";
+
+  authenticate(parameters: AuthRequestV6): Promise<AuthResponse> {
+    return super.authenticate(parameters);
   }
 }
