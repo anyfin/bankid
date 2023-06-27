@@ -1,6 +1,6 @@
 import { BankIdClient } from "bankid";
 
-const DELAY_BETWEEN_REQUETS = 10000; // milliseconds
+const DELAY_BETWEEN_REQUETS = 5000; // milliseconds
 
 async function main() {
   const ip = process.argv[2];
@@ -43,7 +43,7 @@ async function main() {
     });
 
     console.log(signRequest);
-    await client._awaitPendingCollect(signRequest.orderRef);
+    await client.awaitPendingCollect(signRequest.orderRef);
     console.log("sign request successful");
   } catch (e) {
     console.log(e);
@@ -53,7 +53,7 @@ async function main() {
 
   console.log("starting to test /auth and /collect");
 
-  client
+  await client
     .authenticateAndCollect({
       endUserIp: ip,
       personalNumber: personalNumber,
@@ -65,7 +65,7 @@ async function main() {
 
   console.log("starting to test /sign and /collect");
 
-  client
+  await client
     .signAndCollect({
       endUserIp: ip,
       personalNumber: personalNumber,
@@ -95,7 +95,7 @@ async function main() {
 }
 
 main()
-  .then(() => console.log("test completed successfully"))
+  .then(() => console.log("✅ All tests completed successfully"))
   .catch(err => console.log(err));
 
 function delay(ms: number) {

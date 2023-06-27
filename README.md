@@ -14,9 +14,9 @@ yarn install bankid
 ## Usage
 
 ```javascript
-const BankId = require("bankid");
+import { BankIdClient } from "bankid";
 
-const client = new BankId.BankIdClient();
+const client = new BankIdClient();
 const pno = "YYYYMMDDXXXX";
 
 client
@@ -44,9 +44,9 @@ Additionally, `bankid` provides convenience methods to combine auth / sign with 
 Full example _not_ using the convenience methods:
 
 ```javascript
-const BankId = require("bankid");
+import { BankIdClient } from "bankid";
 
-const client = new BankId.BankIdClient();
+const client = new BankIdClient();
 const pno = "YYYYMMDDXXXX";
 const message = "some message displayed to the user to sign";
 
@@ -95,9 +95,9 @@ settings = {
 For production, you'll want to pass in your own pfx and passphrase instead:
 
 ```javascript
-const BankId = require("bankid");
+import { BankIdClient } from "bankid";
 
-const client = new BankId.BankIdClient({
+const client = new BankIdClient({
   production: true,
   pfx: "PATH_TO_YOUR_PFX", // alternatively also accepts buffer
   passphrase: "YOUR_PASSPHRASE",
@@ -119,9 +119,9 @@ When providing a pfx path, it is expected to be based on the current working dir
 From the current directory you would run the script with `node src/main.js` and provide the pfx path:
 
 ```javascript
-const BankId = require("bankid");
+import { BankIdClient } from "bankid";
 
-const client = new BankId.BankIdClient({
+const client = new BankIdClient({
   pfx: "certs/bankid.pfx",
 });
 ```
@@ -138,6 +138,8 @@ Repo ownership: [Jeff Trinidad - @jefftrinidad29](https://github.com/jefftrinida
 Last audit: 2023-04-27 by [@jefftrinidad29](https://github.com/jefftrinidad29)
 
 # Audit Notes
+
 > 27th April 2023 by @jefftrinidad29
+
 - Upgraded all non-critical dependencies
 - yarn audit fix
