@@ -60,7 +60,7 @@ client
     const timer = setInterval(() => {
       const done = () => clearInterval(timer);
       client
-        .collect(res.orderRef)
+        .collect({ orderRef: res.orderRef })
         .then(res => {
           if (res.status === "complete") {
             console.log(res.completionData);
