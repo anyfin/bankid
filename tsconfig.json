@@ -1,4 +1,7 @@
 {
+  "watchOptions": {
+    "excludeDirectories": ["**/node_modules", "/lib"]
+  },
   "compilerOptions": {
     "declaration": true,
     "lib": ["ESNext"],
@@ -11,4 +14,5 @@
   },
   "include": ["src"],
   "exclude": ["node_modules", "**/*.spec.ts"]
+
 }
