@@ -13,6 +13,7 @@
     "url": "git+https://github.com/anyfin/bankid.git"
   },
   "scripts": {
+    "dev": "tsc --watch",
     "build": "tsc",
     "prepublishOnly": "yarn build",
     "format": "prettier --write \"./**/*.{mjs,js,ts,json,md}\""
