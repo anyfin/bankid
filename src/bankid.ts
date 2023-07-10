@@ -4,6 +4,7 @@ import * as path from "path";
 
 import type { AxiosInstance } from "axios";
 import axios from "axios";
+import { QrGenerator } from "./qrgenerator";
 
 //
 // Type definitions for /auth
@@ -391,10 +392,20 @@ export interface AuthRequestV6 {
   requirement?: AuthOptionalRequirementsV6;
 }
 
+interface AuthResponseV6 extends AuthResponse {
+  qr: InstanceType<typeof QrGenerator>;
+}
+
 export class BankIdClientV6 extends BankIdClient {
   version = "v6";
 
-  authenticate(parameters: AuthRequestV6): Promise<AuthResponse> {
-    return super.authenticate(parameters);
+  async authenticate(parameters: AuthRequestV6): Promise<AuthResponseV6> {
+    const resp = await super.authenticate(parameters);
+    const qr = new QrGenerator(
+      resp.qrStartSecret,
+      resp.qrStartToken,
+      resp.orderRef,
+    );
+    return { ...resp, qr };
   }
 }
