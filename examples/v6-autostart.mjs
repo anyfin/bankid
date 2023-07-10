@@ -13,14 +13,14 @@ const tryOpenBankIDDesktop = async (autoStartToken, redirectUrl) => {
 
 const main = async () => {
   const { autoStartToken, orderRef } = await bankid.authenticate({
-    endUserIp: "127.0.0.1"
+    endUserIp: "127.0.0.1",
   });
   const redirectUrl = `https://www.google.com`;
   console.log(`Trying to trigger bankid on your current device..`);
   await tryOpenBankIDDesktop(autoStartToken, redirectUrl);
-  console.log("Awaiting sign..")
+  console.log("Awaiting sign..");
   const resp = await bankid.awaitPendingCollect(orderRef);
-  console.log("Succes!", resp)
+  console.log("Succes!", resp);
 };
 
 main().catch(err => console.error(err));
