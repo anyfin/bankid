@@ -393,7 +393,11 @@ export interface AuthRequestV6 {
 }
 
 interface AuthResponseV6 extends AuthResponse {
-  qr: InstanceType<typeof QrGenerator>;
+  qr: QrGenerator;
+}
+
+interface SignResponseV6 extends SignResponse {
+  qr: QrGenerator;
 }
 
 export class BankIdClientV6 extends BankIdClient {
@@ -401,11 +405,13 @@ export class BankIdClientV6 extends BankIdClient {
 
   async authenticate(parameters: AuthRequestV6): Promise<AuthResponseV6> {
     const resp = await super.authenticate(parameters);
-    const qr = new QrGenerator(
-      resp.qrStartSecret,
-      resp.qrStartToken,
-      resp.orderRef,
-    );
+    const qr = new QrGenerator(resp);
+    return { ...resp, qr };
+  }
+
+  async sign(parameters: SignRequest): Promise<SignResponseV6> {
+    const resp = await super.sign(parameters);
+    const qr = new QrGenerator(resp);
     return { ...resp, qr };
   }
 }
