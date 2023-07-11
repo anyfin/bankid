@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import type { AuthResponse } from "./bankid";
 
 type QrCache = {
   startTime: number;
@@ -13,13 +14,50 @@ interface QRGenerateOptions {
   timeout?: number;
 }
 
-export class QrGenerator {
-  cache = new Map<string, QrCache>();
+export type QrGeneratorOptions =
+  | {
+      /** Provide your own `Map`-compatible caching layer */
+      customCache: typeof defaultCache;
+    }
+  | {
+      orderTTL: number;
+    };
 
-  constructor(qrStartSecret: string, qrStartToken: string, orderRef: string) {
+/**
+ * Default in-memory cache for storing qr payloads
+ * based on `orderRef`.
+ */
+const defaultCache = new Map<string, QrCache>();
+
+/** seconds */
+const TIMEOUT = 60 as const;
+
+export class QrGenerator {
+  cache = defaultCache;
+
+  static defaultOptions = { orderTTL: TIMEOUT } as const;
+
+  constructor(
+    { qrStartSecret, qrStartToken, orderRef }: AuthResponse,
+    options: QrGeneratorOptions = QrGenerator.defaultOptions,
+  ) {
+    if ("customCache" in options && Boolean(options.customCache)) {
+      this.cache = options.customCache;
+    }
     const now = Date.now();
-    const qrStore = { startTime: now, qrStartSecret, qrStartToken };
-    this.cache.set(orderRef, qrStore);
+    const qrCacheEntry: QrCache = {
+      startTime: now,
+      qrStartSecret,
+      qrStartToken,
+    };
+    this.cache.set(orderRef, qrCacheEntry);
+
+    // local in-memory cache will auto-clean keys after set TTL
+    if ("orderTTL" in options) {
+      setTimeout(() => {
+        this.cache.delete(orderRef);
+      }, options.orderTTL * 1000);
+    }
     return this;
   }
 
@@ -29,17 +67,14 @@ export class QrGenerator {
    **/
   *nextQr(
     orderRef: string,
-    { maxCycles, timeout }: QRGenerateOptions = { timeout: 60 },
+    { maxCycles, timeout }: QRGenerateOptions = { timeout: TIMEOUT },
   ) {
     const qr = this.cache.get(orderRef);
     if (!qr) {
       return;
     }
     for (let i = 0; i >= 0; i++) {
-      const secondsSinceStart = parseInt(
-        `${(Date.now() - qr.startTime) / 1000}`,
-        10,
-      );
+      const secondsSinceStart = Math.floor((Date.now() - qr.startTime) / 1000);
       if (maxCycles && i >= maxCycles) return;
       if (timeout && timeout < secondsSinceStart) return;
 
