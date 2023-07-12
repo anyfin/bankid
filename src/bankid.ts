@@ -4,7 +4,7 @@ import * as path from "path";
 
 import type { AxiosInstance } from "axios";
 import axios from "axios";
-import { QrGenerator } from "./qrgenerator";
+import { QrGenerator, QrGeneratorOptions } from "./qrgenerator";
 
 //
 // Type definitions for /auth
@@ -55,7 +55,8 @@ export interface CollectRequest {
   orderRef: string;
 }
 
-export interface CollectResponse {
+type CollectResponse = CollectResponseV5 | CollectResponseV6;
+export interface CollectResponseV5 {
   orderRef: string;
   status: "pending" | "failed" | "complete";
   hintCode?: FailedHintCode | PendingHintCode;
@@ -145,7 +146,8 @@ export type BankIdResponse =
   | CancelResponse
   | AuthResponse
   | SignResponse
-  | CollectResponse;
+  | CollectResponseV5
+  | CollectResponseV6;
 
 //
 // Client settings
@@ -239,6 +241,7 @@ export class BankIdClient {
       : `https://appapi2.test.bankid.com/rp/${this.version}/`;
 
     this.axios = this.#createAxiosInstance(baseUrl);
+    return this;
   }
 
   authenticate(parameters: AuthRequestV5): Promise<AuthResponse> {
@@ -384,7 +387,6 @@ interface AuthOptionalRequirementsV6 {
   cardReader?: "class1" | "class2";
   mrtd: boolean;
   certificatePolicies?: string[];
-  personalNumber: string;
 }
 
 export interface AuthRequestV6 {
@@ -393,25 +395,72 @@ export interface AuthRequestV6 {
 }
 
 interface AuthResponseV6 extends AuthResponse {
-  qr: QrGenerator;
+  qr?: QrGenerator;
 }
 
 interface SignResponseV6 extends SignResponse {
-  qr: QrGenerator;
+  qr?: QrGenerator;
+}
+
+export interface CompletionDataV6 {
+  user: {
+    personalNumber: string;
+    name: string;
+    givenName: string;
+    surname: string;
+  };
+  device: {
+    ipAddress: string;
+    uhi?: string;
+  };
+  /** ISO 8601 date format YYYY-MM-DD with a UTC time zone offset. */
+  bankIdIssueDate: string;
+  stepUp: boolean;
+  signature: string;
+  ocspResponse: string;
+}
+
+interface CollectResponseV6 extends Omit<CollectResponseV5, "completionData"> {
+  completionData?: CompletionDataV6;
+}
+
+interface BankIdClientSettingsV6 extends BankIdClientSettings {
+  /** Controls whether to attach an instance of {@link QrGenerator} to BankID responses  */
+  qrEnabled?: boolean;
+  qrOptions?: QrGeneratorOptions;
 }
 
 export class BankIdClientV6 extends BankIdClient {
   version = "v6";
+  options: Required<BankIdClientSettingsV6>;
+
+  constructor(options: BankIdClientSettingsV6) {
+    super(options);
+    this.options = {
+      // @ts-expect-error this.options not typed after super() call.
+      ...(this.options as Required<BankIdClientSettings>),
+      qrEnabled: options.qrEnabled ?? true,
+      qrOptions: QrGenerator.defaultOptions,
+    };
+  }
 
   async authenticate(parameters: AuthRequestV6): Promise<AuthResponseV6> {
     const resp = await super.authenticate(parameters);
-    const qr = new QrGenerator(resp);
+    const qr = this.options.qrEnabled
+      ? new QrGenerator(resp, this.options.qrOptions)
+      : undefined;
     return { ...resp, qr };
   }
 
   async sign(parameters: SignRequest): Promise<SignResponseV6> {
     const resp = await super.sign(parameters);
-    const qr = new QrGenerator(resp);
+    const qr = this.options.qrEnabled
+      ? new QrGenerator(resp, this.options.qrOptions)
+      : undefined;
     return { ...resp, qr };
+  }
+
+  async collect(parameters: CollectRequest) {
+    return super.collect(parameters) as Promise<CollectResponseV6>;
   }
 }

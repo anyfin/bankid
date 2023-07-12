@@ -4,7 +4,10 @@ import { BankIdClientV6 } from "../lib/bankid.js";
 
 const execPromise = promisify(exec);
 
-const bankid = new BankIdClientV6({ production: false });
+const bankid = new BankIdClientV6({
+  production: false,
+  qrEnabled: false,
+});
 
 const tryOpenBankIDDesktop = async (autoStartToken, redirectUrl) => {
   const deepLink = `bankid:///?autostarttoken=${autoStartToken}&redirect=${redirectUrl}`;
