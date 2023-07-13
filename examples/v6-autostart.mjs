@@ -6,7 +6,6 @@ const execPromise = promisify(exec);
 
 const bankid = new BankIdClientV6({
   production: false,
-  qrEnabled: false,
 });
 
 const tryOpenBankIDDesktop = async (autoStartToken, redirectUrl) => {
@@ -14,6 +13,10 @@ const tryOpenBankIDDesktop = async (autoStartToken, redirectUrl) => {
   await execPromise(`open "${deepLink}"`);
 };
 
+/**
+ * The main function initiates a BankID authentication flow.
+ * It automatically starts the BankID application on the user's device if installed.
+ */
 const main = async () => {
   const { autoStartToken, orderRef } = await bankid.authenticate({
     endUserIp: "127.0.0.1",

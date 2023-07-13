@@ -12,7 +12,22 @@ import { cwd } from "node:process";
 
 const execPromise = promisify(exec);
 
-const bankid = new BankIdClientV6({ production: false });
+const customCache = {
+  cache: {},
+  get(key) {
+    console.log("get called! ", key);
+    return this.cache[key];
+  },
+  set(key, value) {
+    console.log("set called!");
+    this.cache[key] = value;
+  },
+};
+
+const bankid = new BankIdClientV6({
+  production: false,
+  qrOptions: { customCache },
+});
 
 const tryOpenQRCodeInBrowser = async code => {
   // Apple way of opening html files with GET params
@@ -33,6 +48,7 @@ const main = async () => {
   for (const newQrCode of qr.nextQr(orderRef, { timeout: 20 })) {
     tryOpenQRCodeInBrowser(newQrCode);
     const resp = await bankid.collect({ orderRef });
+    console.log({ orderRef, newQrCode });
     if (resp.status === "complete") {
       // Check for success ?
       success = true;
