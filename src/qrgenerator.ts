@@ -1,11 +1,11 @@
 import { createHmac } from "node:crypto";
 import type { AuthResponse } from "./bankid";
 
-type QrCache = {
+interface QrCache {
   startTime: number;
   qrStartToken: string;
   qrStartSecret: string;
-};
+}
 
 interface QRGenerateOptions {
   /** max cycles */
@@ -14,10 +14,14 @@ interface QRGenerateOptions {
   timeout?: number;
 }
 
+export type MapCompatibleCache = Pick<typeof defaultCache, "get" | "delete"> & {
+  set: (key: string, value: QrCache) => void;
+};
+
 export type QrGeneratorOptions =
   | {
       /** Provide your own `Map`-compatible caching layer */
-      customCache: typeof defaultCache;
+      customCache: MapCompatibleCache;
     }
   | {
       orderTTL: number;
@@ -33,7 +37,7 @@ const defaultCache = new Map<string, QrCache>();
 const TIMEOUT = 60 as const;
 
 export class QrGenerator {
-  cache = defaultCache;
+  cache: MapCompatibleCache = defaultCache;
 
   static defaultOptions = { orderTTL: TIMEOUT } as const;
 
