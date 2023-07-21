@@ -80,6 +80,9 @@ client
 
 ## Configuration
 
+> **Note**
+> As Node.js version 17+ uses OpenSSL 3, and BankID certificates are currently encrypted using a legacy algorithm, your application must be configured to enable legacy OpenSSL support, e.g. by placing `node-options="--openssl-legacy-provider"` in `.npmrc`.
+
 By default, `bankid` is instantiated with the following configuration pointing to the Bank ID Test Environment:
 
 ```javascript
