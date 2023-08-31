@@ -126,6 +126,36 @@ const client = new BankIdClient({
 });
 ```
 
+### Compatibility
+
+In Node.js v17+, OpenSSL is upgraded from v1.1.1 to v3, introducing subtle breaking changes for this library that yield this error:
+
+```
+Error: unsupported
+    at configSecureContext (node:internal/tls/secure-context:278:15)
+```
+
+This is due to the legacy algorithms used to generate BankID certificates - and to handle this (until BankID updates their default certificate formats) there are two solutions.
+
+#### Manual certificate modernization (suggested)
+
+First, ensure `OpenSSL` v3.x needs to be installed on your machine.
+
+Then, you can run the following commands to get an updated certificate (`new.pfx`):
+
+```sh
+openssl pkcs12 -in old.pfx -nodes -legacy -out combined.pem
+openssl pkcs12 -in combined.pem -export -out new.pfx
+```
+
+#### Enable legacy OpenSSL support
+
+If for any reason you do not want to modify the certificates, you can also enable the legacy OpenSSL provider when running Node.js:
+
+```sh
+node --openssl-legacy-provider ...
+```
+
 ## Deploy/Publish
 
 In order to deploy new versions, bump the version in `package.json` and create a new GitHub release.
