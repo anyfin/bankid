@@ -11,7 +11,32 @@ npm install --save bankid
 yarn install bankid
 ```
 
-## Usage
+## Usage V6
+
+```javascript
+import { BankIdClientV6 } from "bankid";
+
+const client = new BankIdClientV6({
+  production: false,
+});
+
+const { autoStartToken, orderRef } = await client.authenticate({
+  endUserIp: "127.0.0.1",
+});
+
+// Generate deep link from autoStarttoken and try to open BankID app
+// See ./examples
+
+client
+  .awaitPendingCollect(orderRef)
+  .then(res => {
+    console.log(res.completionData)
+  })
+
+```
+Acting on a session is done trough opening the app or trough scanning a QR Code, both examples are documented in detail [in the examples directory](./examples)
+
+## Usage V5
 
 ```javascript
 import { BankIdClient } from "bankid";

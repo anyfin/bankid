@@ -45,7 +45,7 @@ const main = async () => {
 
   let success = false;
   // Generate new QR code for 20 seconds, check status of the order on each cycle
-  for (const newQrCode of qr.nextQr(orderRef, { timeout: 20 })) {
+  for await (const newQrCode of qr.nextQr(orderRef, { timeout: 20 })) {
     tryOpenQRCodeInBrowser(newQrCode);
     const resp = await bankid.collect({ orderRef });
     console.log({ orderRef, newQrCode });
