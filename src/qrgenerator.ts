@@ -41,7 +41,10 @@ export type QrGeneratorCache = typeof defaultCache;
 const TIMEOUT = 60 as const;
 
 /**
- * Optional class to aid in generating the QR Codes for bankid responses
+ * QrGenerator is an optional class responsible for generating QR codes based
+ * on bankID responses and caching them with its custom cache store.
+ * It has functionalities to generate and retrieve the latest QR code
+ * from cache and cycle through a new QR code value.
  */
 export class QrGenerator {
   cache: QrGeneratorCache = defaultCache;
@@ -81,6 +84,15 @@ export class QrGenerator {
     return this;
   }
 
+  /**
+   * latestQrFromCache is a static asynchronous method that generates the latest QR code from cache.
+   *
+   * @param {string} orderRef - The order reference to be used for generating QR code.
+   * @param {QrGeneratorCache} [customCache=defaultCache] - Optional parameter, the cache store to be used for generating QR code.
+   * If no customCache is provided, the defaultCache is used.
+   *
+   * @returns {Promise<string>} - It returns a Promise that resolves with the latest QR code for the provided order reference.
+   **/
   static async latestQrFromCache(
     orderRef: string,
     customCache: QrGeneratorCache = defaultCache,
@@ -108,6 +120,8 @@ export class QrGenerator {
     if (!qr) return;
     for (let i = 0; i >= 0; i++) {
       const secondsSinceStart = Math.floor((Date.now() - qr.startTime) / 1000);
+
+      // Stop cycle if maxCycles is reached or timeout has occurred
       if (maxCycles && i >= maxCycles) return;
       if (timeout && timeout < secondsSinceStart) return;
 
@@ -119,6 +133,9 @@ export class QrGenerator {
     }
   }
 
+  /**
+   * Private method `#generateQr` generates a new QR code
+   */
   #generateQr = (qrStartSecret: string, qrStartToken: string, time: number) => {
     const qrAuthCode = createHmac("sha256", qrStartSecret)
       .update(`${time}`)

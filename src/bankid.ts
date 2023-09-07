@@ -6,9 +6,6 @@ import type { AxiosInstance } from "axios";
 import axios from "axios";
 import { QrGenerator, QrGeneratorOptions } from "./qrgenerator";
 
-// Re-export
-export { QrGenerator };
-
 //
 // Type definitions for /auth
 //
@@ -423,7 +420,8 @@ export interface CompletionDataV6 {
   ocspResponse: string;
 }
 
-interface CollectResponseV6 extends Omit<CollectResponseV5, "completionData"> {
+export interface CollectResponseV6
+  extends Omit<CollectResponseV5, "completionData"> {
   completionData?: CompletionDataV6;
 }
 
@@ -433,6 +431,10 @@ interface BankIdClientSettingsV6 extends BankIdClientSettings {
   qrOptions?: QrGeneratorOptions;
 }
 
+/**
+ * A class for creating a BankId Client based on v6.0 api, extending from BankIdClient
+ * @see https://www.bankid.com/en/utvecklare/guider/teknisk-integrationsguide/webbservice-api
+ */
 export class BankIdClientV6 extends BankIdClient {
   version = "v6";
   options: Required<BankIdClientSettingsV6>;

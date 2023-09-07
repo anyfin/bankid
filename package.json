@@ -6,8 +6,8 @@
     "bankid",
     "authentication"
   ],
-  "version": "v3.2.0-alpha.0",
-  "main": "lib/bankid.js",
+  "version": "v3.2.0-alpha.1",
+  "main": "lib/index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/anyfin/bankid.git"
