@@ -6,6 +6,9 @@ import type { AxiosInstance } from "axios";
 import axios from "axios";
 import { QrGenerator, QrGeneratorOptions } from "./qrgenerator";
 
+// Re-export
+export { QrGenerator };
+
 //
 // Type definitions for /auth
 //

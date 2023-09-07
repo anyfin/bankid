@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import type { AuthResponse } from "./bankid";
 
-interface QrCache {
+export interface QrCacheEntry {
   startTime: number;
   qrStartToken: string;
   qrStartSecret: string;
@@ -14,14 +14,10 @@ interface QRGenerateOptions {
   timeout?: number;
 }
 
-export type MapCompatibleCache = Pick<typeof defaultCache, "get" | "delete"> & {
-  set: (key: string, value: QrCache) => void;
-};
-
 export type QrGeneratorOptions =
   | {
-      /** Provide your own `Map`-compatible caching layer */
-      customCache: MapCompatibleCache;
+      /** Provide your own caching layer */
+      customCache: QrGeneratorCache;
     }
   | {
       orderTTL: number;
@@ -31,52 +27,85 @@ export type QrGeneratorOptions =
  * Default in-memory cache for storing qr payloads
  * based on `orderRef`.
  */
-const defaultCache = new Map<string, QrCache>();
+const _defaultCacheMap = new Map<string, QrCacheEntry>();
+const defaultCache = {
+  get: (key: string) => Promise.resolve(_defaultCacheMap.get(key)),
+  set: (key: string, value: QrCacheEntry) =>
+    Promise.resolve(_defaultCacheMap.set(key, value)).then(() => void 0),
+  delete: (key: string) => Promise.resolve(_defaultCacheMap.delete(key)),
+};
+
+export type QrGeneratorCache = typeof defaultCache;
 
 /** seconds */
 const TIMEOUT = 60 as const;
 
+/**
+ * Optional class to aid in generating the QR Codes for bankid responses
+ */
 export class QrGenerator {
-  cache: MapCompatibleCache = defaultCache;
+  cache: QrGeneratorCache = defaultCache;
+  orderRef: string | null;
 
   static defaultOptions = { orderTTL: TIMEOUT } as const;
 
   constructor(
-    { qrStartSecret, qrStartToken, orderRef }: AuthResponse,
+    resp: AuthResponse | null,
     options: QrGeneratorOptions = QrGenerator.defaultOptions,
   ) {
     if ("customCache" in options && Boolean(options.customCache)) {
       this.cache = options.customCache;
     }
-    const now = Date.now();
-    const qrCacheEntry: QrCache = {
-      startTime: now,
-      qrStartSecret,
-      qrStartToken,
-    };
-    this.cache.set(orderRef, qrCacheEntry);
+
+    this.orderRef = resp?.orderRef || null;
+    // If constructed with a response, set the cache
+    if (resp) {
+      const { qrStartSecret, qrStartToken, orderRef } = resp;
+      const now = Date.now();
+      const qrCacheEntry: QrCacheEntry = {
+        startTime: now,
+        qrStartSecret,
+        qrStartToken,
+      };
+      this.cache.set(orderRef, qrCacheEntry);
+    }
 
     // local in-memory cache will auto-clean keys after set TTL
     if ("orderTTL" in options) {
       setTimeout(() => {
-        this.cache.delete(orderRef);
+        if (this.orderRef) {
+          this.cache.delete(this.orderRef);
+        }
       }, options.orderTTL * 1000);
     }
     return this;
   }
 
+  static async latestQrFromCache(
+    orderRef: string,
+    customCache: QrGeneratorCache = defaultCache,
+  ) {
+    const instance = new QrGenerator(null, { customCache });
+    return (await instance.nextQr(orderRef, { maxCycles: 1 }).next()).value;
+  }
+
   /**
    * Generator yielding a new value for the qrcode within
    * the specified limits.
+   * @example
+   * ```
+   * for await (const qr of qrInstance?.nextQr(orderRef, { timeout: 60 })) {
+   *  // Put value from qr in a cache
+   *  await sleep(2000)
+   * }
+   * ```
    **/
-  *nextQr(
+  async *nextQr(
     orderRef: string,
     { maxCycles, timeout }: QRGenerateOptions = { timeout: TIMEOUT },
   ) {
-    const qr = this.cache.get(orderRef);
-    if (!qr) {
-      return;
-    }
+    const qr = await this.cache.get(orderRef);
+    if (!qr) return;
     for (let i = 0; i >= 0; i++) {
       const secondsSinceStart = Math.floor((Date.now() - qr.startTime) / 1000);
       if (maxCycles && i >= maxCycles) return;
