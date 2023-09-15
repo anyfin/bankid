@@ -197,7 +197,7 @@ export class RequestError extends Error {
 
 export class BankIdClient {
   readonly options: Required<BankIdClientSettings>;
-  readonly axios: AxiosInstance;
+  axios: AxiosInstance;
 
   version = "v5.1";
 
@@ -236,11 +236,7 @@ export class BankIdClient {
         : path.resolve(__dirname, "../cert/", "test.ca");
     }
 
-    const baseUrl = this.options.production
-      ? `https://appapi2.bankid.com/rp/${this.version}/`
-      : `https://appapi2.test.bankid.com/rp/${this.version}/`;
-
-    this.axios = this.#createAxiosInstance(baseUrl);
+    this.axios = this.createAxiosInstance();
     return this;
   }
 
@@ -363,7 +359,11 @@ export class BankIdClient {
     });
   }
 
-  #createAxiosInstance(baseURL: string): AxiosInstance {
+  createAxiosInstance(): AxiosInstance {
+    const baseURL = this.options.production
+      ? `https://appapi2.bankid.com/rp/${this.version}/`
+      : `https://appapi2.test.bankid.com/rp/${this.version}/`;
+
     const ca = Buffer.isBuffer(this.options.ca)
       ? this.options.ca
       : fs.readFileSync(this.options.ca, "utf-8");
@@ -387,6 +387,7 @@ interface AuthOptionalRequirementsV6 {
   cardReader?: "class1" | "class2";
   mrtd: boolean;
   certificatePolicies?: string[];
+  personalNumber: string;
 }
 
 export interface AuthRequestV6 {
@@ -436,11 +437,12 @@ interface BankIdClientSettingsV6 extends BankIdClientSettings {
  * @see https://www.bankid.com/en/utvecklare/guider/teknisk-integrationsguide/webbservice-api
  */
 export class BankIdClientV6 extends BankIdClient {
-  version = "v6";
+  version = "v6.0";
   options: Required<BankIdClientSettingsV6>;
 
   constructor(options: BankIdClientSettingsV6) {
     super(options);
+    this.axios = this.createAxiosInstance();
     this.options = {
       // @ts-expect-error this.options not typed after super() call.
       ...(this.options as Required<BankIdClientSettings>),
