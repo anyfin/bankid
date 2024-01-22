@@ -37,6 +37,8 @@ there's four main methods (arguments marked with `*` are required)
 - `collect({orderRef*})`
 - `cancel({orderRef*})`
 
+Note that `userVisibleData` will be base64-encoded before sent to the BankID API.
+
 Additionally, `bankid` provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above):
 
 - `authenticateAndCollect(...)`
