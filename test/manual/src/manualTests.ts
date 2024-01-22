@@ -1,4 +1,4 @@
-import { BankIdClient } from "bankid";
+import { BankIdClient } from "../../../";
 
 const DELAY_BETWEEN_REQUETS = 5000; // milliseconds
 
@@ -22,6 +22,8 @@ async function main() {
     const authRequest = await client.authenticate({
       endUserIp: ip,
       personalNumber: personalNumber,
+      userVisibleData: Buffer.from("this is a test").toString("base64"),
+      userVisibleDataFormat: "simpleMarkdownV1",
     });
 
     console.log(authRequest);
@@ -39,7 +41,8 @@ async function main() {
     const signRequest = await client.sign({
       endUserIp: ip,
       personalNumber: personalNumber,
-      userVisibleData: "this is a test",
+      userVisibleData: Buffer.from("this is a test").toString("base64"),
+      userVisibleDataFormat: "simpleMarkdownV1",
     });
 
     console.log(signRequest);
