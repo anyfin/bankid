@@ -23,16 +23,17 @@ client
   .authenticateAndCollect({
     personalNumber: pno,
     endUserIp: "127.0.0.1",
+    userVisibleData: "Authentication request for my service",
   })
   .then(res => console.log(res.completionData))
   .catch(console.error);
 ```
 
 As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.5.pdf),
-there' four main methods (arguments marked with `*` are required)
+there's four main methods (arguments marked with `*` are required)
 
-- `authenticate({endUserIp*, personalNumber, requirement})`
-- `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userNonVisibleData})`
+- `authenticate({endUserIp*, personalNumber, requirement, userVisibleData, userVisibleDataFormat, userNonVisibleData})`
+- `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userVisibleDataFormat, userNonVisibleData})`
 - `collect({orderRef*})`
 - `cancel({orderRef*})`
 

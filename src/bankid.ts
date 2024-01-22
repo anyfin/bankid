@@ -15,6 +15,7 @@ export interface AuthRequest {
   requirement?: AuthOptionalRequirements;
   userVisibleData?: string;
   userVisibleDataFormat?: "simpleMarkdownV1";
+  userNonVisibleData?: string;
 }
 
 export interface AuthResponse {
@@ -38,7 +39,6 @@ interface AuthOptionalRequirements {
 
 export interface SignRequest extends AuthRequest {
   userVisibleData: string;
-  userNonVisibleData?: string;
 }
 
 export interface SignResponse extends AuthResponse {}
@@ -240,6 +240,26 @@ export class BankIdClient {
     if (!parameters.endUserIp) {
       throw new Error("Missing required argument endUserIp.");
     }
+    if (
+      parameters.userVisibleDataFormat &&
+      parameters.userVisibleDataFormat !== "simpleMarkdownV1"
+    ) {
+      throw new Error("userVisibleDataFormat can only be simpleMarkdownV1.");
+    }
+
+    console.log(parameters);
+
+    parameters = {
+      ...parameters,
+      userVisibleData: parameters.userVisibleData
+        ? Buffer.from(parameters.userVisibleData).toString("base64")
+        : undefined,
+      userNonVisibleData: parameters.userNonVisibleData
+        ? Buffer.from(parameters.userNonVisibleData).toString("base64")
+        : undefined,
+    };
+
+    console.log(parameters);
 
     return this.#call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
   }

@@ -1,4 +1,4 @@
-import { BankIdClient } from "../../../";
+import { BankIdClient } from "bankid";
 
 const DELAY_BETWEEN_REQUETS = 5000; // milliseconds
 
@@ -17,40 +17,33 @@ async function main() {
     production: false,
   });
 
-  try {
-    console.log("starting to test /auth");
-    const authRequest = await client.authenticate({
-      endUserIp: ip,
-      personalNumber: personalNumber,
-      userVisibleData: Buffer.from("this is a test").toString("base64"),
-      userVisibleDataFormat: "simpleMarkdownV1",
-    });
+  console.log("starting to test /auth");
+  const authRequest = await client.authenticate({
+    endUserIp: ip,
+    personalNumber: personalNumber,
+    userVisibleData:
+      "### This is a test\n\nThis test has some *simpleMarkdownV1*",
+    userVisibleDataFormat: "simpleMarkdownV1",
+  });
 
-    console.log(authRequest);
-    await client._awaitPendingCollect(authRequest.orderRef);
-    console.log("auth request successful");
-  } catch (e) {
-    console.log(e);
-  }
+  console.log(authRequest);
+  await client._awaitPendingCollect(authRequest.orderRef);
+  console.log("auth request successful");
 
   await delay(DELAY_BETWEEN_REQUETS);
 
-  try {
-    console.log("starting to test /sign");
+  console.log("starting to test /sign");
 
-    const signRequest = await client.sign({
-      endUserIp: ip,
-      personalNumber: personalNumber,
-      userVisibleData: Buffer.from("this is a test").toString("base64"),
-      userVisibleDataFormat: "simpleMarkdownV1",
-    });
+  const signRequest = await client.sign({
+    endUserIp: ip,
+    personalNumber: personalNumber,
+    userVisibleData: "this is a test",
+    userVisibleDataFormat: "simpleMarkdownV1",
+  });
 
-    console.log(signRequest);
-    await client.awaitPendingCollect(signRequest.orderRef);
-    console.log("sign request successful");
-  } catch (e) {
-    console.log(e);
-  }
+  console.log(signRequest);
+  await client.awaitPendingCollect(signRequest.orderRef);
+  console.log("sign request successful");
 
   await delay(DELAY_BETWEEN_REQUETS);
 
@@ -60,9 +53,9 @@ async function main() {
     .authenticateAndCollect({
       endUserIp: ip,
       personalNumber: personalNumber,
+      userVisibleData: "this is a test of authenticateAndCollect",
     })
-    .then(() => console.log("authenticateAndCollect successful"))
-    .catch(console.log);
+    .then(() => console.log("authenticateAndCollect successful"));
 
   await delay(DELAY_BETWEEN_REQUETS);
 
@@ -76,30 +69,28 @@ async function main() {
     })
     .then(() => {
       console.log("signAndCollect successful");
-    })
-    .catch(console.log);
+    });
 
   await delay(DELAY_BETWEEN_REQUETS);
 
-  try {
-    console.log("starting to test /sign and /cancel");
+  console.log("starting to test /sign and /cancel");
 
-    const response = await client.sign({
-      endUserIp: ip,
-      personalNumber: personalNumber,
-      userVisibleData:
-        "this is a cancellation test - please DO NOT fill in your verification code",
-    });
+  const response = await client.sign({
+    endUserIp: ip,
+    personalNumber: personalNumber,
+    userVisibleData:
+      "this is a cancellation test - please DO NOT fill in your verification code or cancel the sign from your device",
+  });
 
-    await cancelOrderIn(client, response.orderRef, 5000);
-  } catch (e) {
-    console.log(e);
-  }
+  await cancelOrderIn(client, response.orderRef, 5000);
 }
 
 main()
   .then(() => console.log("✅ All tests completed successfully"))
-  .catch(err => console.log(err));
+  .catch(err => {
+    console.log("❌ Test run failed");
+    console.log(err);
+  });
 
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
