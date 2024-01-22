@@ -13,6 +13,9 @@ export interface AuthRequest {
   endUserIp: string;
   personalNumber?: string;
   requirement?: AuthOptionalRequirements;
+  userVisibleData: string;
+  userVisibleDataFormat?: "simpleMarkdownV1";
+  userNonVisibleData?: string;
 }
 
 export interface AuthResponse {
@@ -34,11 +37,7 @@ interface AuthOptionalRequirements {
 // Type definitions for /sign
 //
 
-export interface SignRequest extends AuthRequest {
-  userVisibleData: string;
-  userVisibleDataFormat?: "simpleMarkdownV1";
-  userNonVisibleData?: string;
-}
+export interface SignRequest extends AuthRequest {}
 
 export interface SignResponse extends AuthResponse {}
 
