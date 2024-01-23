@@ -30,7 +30,7 @@ client
 ```
 
 As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.5.pdf),
-there's four main methods (arguments marked with `*` are required)
+there are four main methods (arguments marked with `*` are required)
 
 - `authenticate({endUserIp*, personalNumber, requirement, userVisibleData, userVisibleDataFormat, userNonVisibleData})`
 - `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userVisibleDataFormat, userNonVisibleData})`

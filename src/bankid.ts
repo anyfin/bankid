@@ -241,13 +241,11 @@ export class BankIdClient {
       throw new Error("Missing required argument endUserIp.");
     }
     if (
-      parameters.userVisibleDataFormat &&
+      parameters.userVisibleDataFormat != null &&
       parameters.userVisibleDataFormat !== "simpleMarkdownV1"
     ) {
       throw new Error("userVisibleDataFormat can only be simpleMarkdownV1.");
     }
-
-    console.log(parameters);
 
     parameters = {
       ...parameters,
@@ -258,8 +256,6 @@ export class BankIdClient {
         ? Buffer.from(parameters.userNonVisibleData).toString("base64")
         : undefined,
     };
-
-    console.log(parameters);
 
     return this.#call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
   }
