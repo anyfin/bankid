@@ -106,14 +106,19 @@ async function main() {
   return errors;
 }
 
-main().then(errors => {
-  const failedTests = errors.length;
-  if (failedTests === 0) {
-    console.log("✅ All tests completed successfully");
-  } else {
-    console.error(`❌ ${failedTests} test(s) failed`);
-  }
-});
+main()
+	.then(errors => {
+	  const failedTests = errors.length;
+	  if (failedTests === 0) {
+	    console.log("✅ All tests completed successfully");
+	  } else {
+	    console.error(`❌ ${failedTests} test(s) failed`);
+	  }
+	})
+	.catch(error => {
+		console.error(`❌ test(s) crashed`);
+	  console.error(error);
+	});
 
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
