@@ -23,18 +23,21 @@ client
   .authenticateAndCollect({
     personalNumber: pno,
     endUserIp: "127.0.0.1",
+    userVisibleData: "Authentication request for my service",
   })
   .then(res => console.log(res.completionData))
   .catch(console.error);
 ```
 
 As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.5.pdf),
-there' four main methods (arguments marked with `*` are required)
+there are four main methods (arguments marked with `*` are required)
 
-- `authenticate({endUserIp*, personalNumber, requirement})`
-- `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userNonVisibleData})`
+- `authenticate({endUserIp*, personalNumber, requirement, userVisibleData, userVisibleDataFormat, userNonVisibleData})`
+- `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userVisibleDataFormat, userNonVisibleData})`
 - `collect({orderRef*})`
 - `cancel({orderRef*})`
+
+Note that `userVisibleData` will be base64-encoded before sent to the BankID API.
 
 Additionally, `bankid` provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above):
 
