@@ -6,16 +6,17 @@
     "bankid",
     "authentication"
   ],
-  "version": "3.1.4",
-  "main": "lib/bankid.js",
+  "version": "3.2.0",
+  "main": "lib/index.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/anyfin/bankid.git"
   },
   "scripts": {
+    "dev": "tsc --watch",
     "build": "tsc",
     "prepublishOnly": "yarn build",
-    "format": "prettier --write \"./**/*.{js,ts,json,md}\""
+    "format": "prettier --write \"./**/*.{mjs,js,ts,json,md}\""
   },
   "author": "Sven Perkmann",
   "license": "MIT",

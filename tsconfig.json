@@ -1,4 +1,7 @@
 {
+  "watchOptions": {
+    "excludeDirectories": ["**/node_modules", "/lib"]
+  },
   "compilerOptions": {
     "declaration": true,
     "lib": ["ESNext"],

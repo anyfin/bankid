@@ -1,6 +1,10 @@
 # OS specific
 .DS_Store
 
+# IDE
+.vscode
+.idea
+
 # Build directory
 lib
 
@@ -36,9 +40,6 @@ build/Release
 # Dependency directories
 node_modules
 jspm_packages
-
-#
-*package-lock.json
 
 # Optional npm cache directory
 .npm

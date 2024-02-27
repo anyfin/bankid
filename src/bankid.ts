@@ -4,12 +4,13 @@ import * as path from "path";
 
 import type { AxiosInstance } from "axios";
 import axios from "axios";
+import { QrGenerator, QrGeneratorOptions } from "./qrgenerator";
 
 //
 // Type definitions for /auth
 //
 
-export interface AuthRequest {
+export interface AuthRequestV5 {
   endUserIp: string;
   personalNumber?: string;
   requirement?: AuthOptionalRequirements;
@@ -19,6 +20,10 @@ export interface AuthRequest {
 }
 
 export interface AuthResponse {
+  /**
+   * Use in deeplink to start BankId on same device.
+   * @example `bankid:///?autostarttoken=[TOKEN]&redirect=[RETURNURL]`
+   */
   autoStartToken: string;
   qrStartSecret: string;
   qrStartToken: string;
@@ -37,7 +42,7 @@ interface AuthOptionalRequirements {
 // Type definitions for /sign
 //
 
-export interface SignRequest extends AuthRequest {
+export interface SignRequest extends AuthRequestV5 {
   userVisibleData: string;
 }
 
@@ -51,7 +56,8 @@ export interface CollectRequest {
   orderRef: string;
 }
 
-export interface CollectResponse {
+type CollectResponse = CollectResponseV5 | CollectResponseV6;
+export interface CollectResponseV5 {
   orderRef: string;
   status: "pending" | "failed" | "complete";
   hintCode?: FailedHintCode | PendingHintCode;
@@ -132,7 +138,7 @@ export enum BankIdMethod {
 }
 
 export type BankIdRequest =
-  | AuthRequest
+  | AuthRequestV5
   | SignRequest
   | CollectRequest
   | CancelRequest;
@@ -141,7 +147,8 @@ export type BankIdResponse =
   | CancelResponse
   | AuthResponse
   | SignResponse
-  | CollectResponse;
+  | CollectResponseV5
+  | CollectResponseV6;
 
 //
 // Client settings
@@ -191,8 +198,9 @@ export class RequestError extends Error {
 
 export class BankIdClient {
   readonly options: Required<BankIdClientSettings>;
-  readonly axios: AxiosInstance;
-  readonly baseUrl: string;
+  axios: AxiosInstance;
+
+  version = "v5.1";
 
   constructor(options?: BankIdClientSettings) {
     this.options = {
@@ -229,14 +237,11 @@ export class BankIdClient {
         : path.resolve(__dirname, "../cert/", "test.ca");
     }
 
-    this.axios = this.#createAxiosInstance();
-
-    this.baseUrl = this.options.production
-      ? "https://appapi2.bankid.com/rp/v5.1/"
-      : "https://appapi2.test.bankid.com/rp/v5.1/";
+    this.axios = this.createAxiosInstance();
+    return this;
   }
 
-  authenticate(parameters: AuthRequest): Promise<AuthResponse> {
+  authenticate(parameters: AuthRequestV5): Promise<AuthResponse> {
     if (!parameters.endUserIp) {
       throw new Error("Missing required argument endUserIp.");
     }
@@ -257,7 +262,10 @@ export class BankIdClient {
         : undefined,
     };
 
-    return this.#call<AuthRequest, AuthResponse>(BankIdMethod.auth, parameters);
+    return this.#call<AuthRequestV5, AuthResponse>(
+      BankIdMethod.auth,
+      parameters,
+    );
   }
 
   sign(parameters: SignRequest): Promise<SignResponse> {
@@ -306,7 +314,7 @@ export class BankIdClient {
   }
 
   async authenticateAndCollect(
-    parameters: AuthRequest,
+    parameters: AuthRequestV5,
   ): Promise<CollectResponse> {
     const authResponse = await this.authenticate(parameters);
     return this.awaitPendingCollect(authResponse.orderRef);
@@ -345,7 +353,7 @@ export class BankIdClient {
   ): Promise<Res> {
     return new Promise((resolve, reject) => {
       this.axios
-        .post<Res>(this.baseUrl + method, payload)
+        .post<Res>(method, payload)
         .then(response => {
           resolve(response.data);
         })
@@ -368,7 +376,11 @@ export class BankIdClient {
     });
   }
 
-  #createAxiosInstance(): AxiosInstance {
+  createAxiosInstance(): AxiosInstance {
+    const baseURL = this.options.production
+      ? `https://appapi2.bankid.com/rp/${this.version}/`
+      : `https://appapi2.test.bankid.com/rp/${this.version}/`;
+
     const ca = Buffer.isBuffer(this.options.ca)
       ? this.options.ca
       : fs.readFileSync(this.options.ca, "utf-8");
@@ -378,10 +390,101 @@ export class BankIdClient {
     const passphrase = this.options.passphrase;
 
     return axios.create({
+      baseURL,
       httpsAgent: new https.Agent({ pfx, passphrase, ca }),
       headers: {
         "Content-Type": "application/json",
       },
     });
+  }
+}
+
+interface AuthOptionalRequirementsV6 {
+  pinCode: boolean;
+  cardReader?: "class1" | "class2";
+  mrtd: boolean;
+  certificatePolicies?: string[];
+  personalNumber: string;
+}
+
+export interface AuthRequestV6 {
+  endUserIp: string;
+  requirement?: AuthOptionalRequirementsV6;
+}
+
+interface AuthResponseV6 extends AuthResponse {
+  qr?: QrGenerator;
+}
+
+interface SignResponseV6 extends SignResponse {
+  qr?: QrGenerator;
+}
+
+export interface CompletionDataV6 {
+  user: {
+    personalNumber: string;
+    name: string;
+    givenName: string;
+    surname: string;
+  };
+  device: {
+    ipAddress: string;
+    uhi?: string;
+  };
+  /** ISO 8601 date format YYYY-MM-DD with a UTC time zone offset. */
+  bankIdIssueDate: string;
+  stepUp: boolean;
+  signature: string;
+  ocspResponse: string;
+}
+
+export interface CollectResponseV6
+  extends Omit<CollectResponseV5, "completionData"> {
+  completionData?: CompletionDataV6;
+}
+
+interface BankIdClientSettingsV6 extends BankIdClientSettings {
+  /** Controls whether to attach an instance of {@link QrGenerator} to BankID responses  */
+  qrEnabled?: boolean;
+  qrOptions?: QrGeneratorOptions;
+}
+
+/**
+ * A class for creating a BankId Client based on v6.0 api, extending from BankIdClient
+ * @see https://www.bankid.com/en/utvecklare/guider/teknisk-integrationsguide/webbservice-api
+ */
+export class BankIdClientV6 extends BankIdClient {
+  version = "v6.0";
+  options: Required<BankIdClientSettingsV6>;
+
+  constructor(options: BankIdClientSettingsV6) {
+    super(options);
+    this.axios = this.createAxiosInstance();
+    this.options = {
+      // @ts-expect-error this.options not typed after super() call.
+      ...(this.options as Required<BankIdClientSettings>),
+      qrEnabled: options.qrEnabled ?? true,
+      qrOptions: options.qrOptions ?? QrGenerator.defaultOptions,
+    };
+  }
+
+  async authenticate(parameters: AuthRequestV6): Promise<AuthResponseV6> {
+    const resp = await super.authenticate(parameters);
+    const qr = this.options.qrEnabled
+      ? new QrGenerator(resp, this.options.qrOptions)
+      : undefined;
+    return { ...resp, qr };
+  }
+
+  async sign(parameters: SignRequest): Promise<SignResponseV6> {
+    const resp = await super.sign(parameters);
+    const qr = this.options.qrEnabled
+      ? new QrGenerator(resp, this.options.qrOptions)
+      : undefined;
+    return { ...resp, qr };
+  }
+
+  async collect(parameters: CollectRequest) {
+    return super.collect(parameters) as Promise<CollectResponseV6>;
   }
 }
