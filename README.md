@@ -48,18 +48,21 @@ client
   .authenticateAndCollect({
     personalNumber: pno,
     endUserIp: "127.0.0.1",
+    userVisibleData: "Authentication request for my service",
   })
   .then(res => console.log(res.completionData))
   .catch(console.error);
 ```
 
 As outlined in the [relying party guidelines](https://www.bankid.com/assets/bankid/rp/bankid-relying-party-guidelines-v3.5.pdf),
-there' four main methods (arguments marked with `*` are required)
+there are four main methods (arguments marked with `*` are required)
 
-- `authenticate({endUserIp*, personalNumber, requirement})`
-- `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userNonVisibleData})`
+- `authenticate({endUserIp*, personalNumber, requirement, userVisibleData, userVisibleDataFormat, userNonVisibleData})`
+- `sign({endUserIp*, personalNumber, requirement, userVisibleData*, userVisibleDataFormat, userNonVisibleData})`
 - `collect({orderRef*})`
 - `cancel({orderRef*})`
+
+Note that `userVisibleData` will be base64-encoded before sent to the BankID API.
 
 Additionally, `bankid` provides convenience methods to combine auth / sign with periodic collection of the status until the process either failed or succeeded (as shown in the example code above):
 
@@ -149,6 +152,36 @@ import { BankIdClient } from "bankid";
 const client = new BankIdClient({
   pfx: "certs/bankid.pfx",
 });
+```
+
+### Compatibility
+
+In Node.js v17+, OpenSSL is upgraded from v1.1.1 to v3, introducing subtle breaking changes for this library that yield this error:
+
+```
+Error: unsupported
+    at configSecureContext (node:internal/tls/secure-context:278:15)
+```
+
+This is due to the legacy algorithms used to generate BankID certificates - and to handle this (until BankID updates their default certificate formats) there are two solutions.
+
+#### Manual certificate modernization (suggested)
+
+First, ensure `OpenSSL` v3.x needs to be installed on your machine.
+
+Then, you can run the following commands to get an updated certificate (`new.pfx`):
+
+```sh
+openssl pkcs12 -in old.pfx -nodes -legacy -out combined.pem
+openssl pkcs12 -in combined.pem -export -out new.pfx
+```
+
+#### Enable legacy OpenSSL support
+
+If for any reason you do not want to modify the certificates, you can also enable the legacy OpenSSL provider when running Node.js:
+
+```sh
+node --openssl-legacy-provider ...
 ```
 
 ## Deploy/Publish
