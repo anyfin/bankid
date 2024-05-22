@@ -410,6 +410,9 @@ interface AuthOptionalRequirementsV6 {
 export interface AuthRequestV6 {
   endUserIp: string;
   requirement?: AuthOptionalRequirementsV6;
+  userVisibleData?: string;
+  userVisibleDataFormat?: "simpleMarkdownV1";
+  userNonVisibleData?: string;
 }
 
 interface AuthResponseV6 extends AuthResponse {
