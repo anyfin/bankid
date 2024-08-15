@@ -25,7 +25,7 @@
     "url": "https://github.com/anyfin/bankid/issues"
   },
   "dependencies": {
-    "axios": "^1.6.4"
+    "axios": "^1.7.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.10",
