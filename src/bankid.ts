@@ -413,6 +413,10 @@ export interface AuthRequestV6 {
   userVisibleData?: string;
   userVisibleDataFormat?: "simpleMarkdownV1";
   userNonVisibleData?: string;
+  returnUrl?: string;
+  returnRisk?: boolean;
+  web?: boolean;
+  app?: boolean;
 }
 
 interface AuthResponseV6 extends AuthResponse {
