@@ -221,7 +221,7 @@ export class BankIdClient {
         this.options.pfx = path.resolve(
           __dirname,
           "../cert/",
-          "FPTestcert4_20230629.p12",
+          "FPTestcert5_20240610.p12",
         );
       }
 
