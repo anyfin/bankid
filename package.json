@@ -33,7 +33,7 @@
     "typescript": "5.x"
   },
   "peerDependencies": {
-    "@types/node": ">=14 <21"
+    "@types/node": ">=14 <22"
   },
   "peerDependenciesMeta": {
     "@types/node": {
