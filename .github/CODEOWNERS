@@ -1,0 +1,16 @@
+# Code Owners — bankid
+#
+# These owners are automatically requested for review when a PR modifies
+# files matching the patterns below.
+#
+# The org ruleset "Protect Default Branch" requires at least one approval
+# from a code owner before a PR can be merged.
+#
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: entire repo owned by the engineering team.
+# Any ONE member of the team satisfies the code-owner approval requirement.
+*       @anyfin/developers
+
+# Protect the CODEOWNERS file itself — only global admins can change ownership rules.
+/.github/CODEOWNERS  @anyfin/global-admins
