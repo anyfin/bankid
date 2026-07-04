@@ -10,7 +10,7 @@
 
 # Default: entire repo owned by the engineering team.
 # Any ONE member of the team satisfies the code-owner approval requirement.
-*       @anyfin/developers
+*       @anyfin/refi
 
 # Protect the CODEOWNERS file itself — only global admins can change ownership rules.
 /.github/CODEOWNERS  @anyfin/global-admins
