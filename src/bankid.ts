@@ -2,8 +2,6 @@ import * as fs from "fs";
 import * as https from "https";
 import * as path from "path";
 
-import type { AxiosInstance } from "axios";
-import axios from "axios";
 import { QrGenerator, QrGeneratorOptions } from "./qrgenerator";
 
 //
@@ -157,6 +155,7 @@ export type BankIdResponse =
 interface BankIdClientSettings {
   production: boolean;
   refreshInterval?: number;
+  requestTimeout?: number;
   pfx?: string | Buffer;
   passphrase?: string;
   ca?: string | Buffer;
@@ -193,12 +192,67 @@ export class RequestError extends Error {
 }
 
 //
+// HTTP helper
+//
+
+interface HttpResponse<T> {
+  statusCode: number;
+  data: T;
+}
+
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
+function httpsPost<T>(
+  url: string,
+  body: unknown,
+  agent: https.Agent,
+  timeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS,
+): Promise<HttpResponse<T>> {
+  return new Promise((resolve, reject) => {
+    const { hostname, pathname, search } = new URL(url);
+
+    const req = https.request(
+      {
+        hostname,
+        path: pathname + search,
+        method: "POST",
+        agent,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => {
+          const raw = Buffer.concat(chunks).toString("utf-8");
+          try {
+            const data = JSON.parse(raw) as T;
+            resolve({ statusCode: res.statusCode ?? 0, data });
+          } catch {
+            reject(new Error(`Failed to parse response: ${raw}`));
+          }
+        });
+      },
+    );
+
+    req.setTimeout(timeoutMs, () => {
+      req.destroy(new Error(`Request timed out after ${timeoutMs}ms`));
+    });
+    req.on("error", reject);
+    req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+//
 // Client implementation
 //
 
 export class BankIdClient {
   readonly options: Required<BankIdClientSettings>;
-  axios: AxiosInstance;
+  protected baseURL: string;
+  protected httpsAgent: https.Agent;
 
   version = "v5.1";
 
@@ -206,6 +260,7 @@ export class BankIdClient {
     this.options = {
       production: false,
       refreshInterval: 2000,
+      requestTimeout: DEFAULT_REQUEST_TIMEOUT_MS,
       ...options,
     } as Required<BankIdClientSettings>;
 
@@ -237,7 +292,9 @@ export class BankIdClient {
         : path.resolve(__dirname, "../cert/", "test.ca");
     }
 
-    this.axios = this.createAxiosInstance();
+    this.baseURL = "";
+    this.httpsAgent = undefined!;
+    this.initializeHttpClient();
     return this;
   }
 
@@ -347,37 +404,32 @@ export class BankIdClient {
     });
   }
 
-  #call<Req extends BankIdRequest, Res extends BankIdResponse>(
+  async #call<Req extends BankIdRequest, Res extends BankIdResponse>(
     method: BankIdMethod,
     payload: Req,
   ): Promise<Res> {
-    return new Promise((resolve, reject) => {
-      this.axios
-        .post<Res>(method, payload)
-        .then(response => {
-          resolve(response.data);
-        })
-        .catch((error: unknown) => {
-          let thrownError = error;
+    let response: HttpResponse<Res & ErrorResponse>;
 
-          if (axios.isAxiosError(error)) {
-            if (error.response) {
-              thrownError = new BankIdError(
-                error.response.data.errorCode,
-                error.response.data.details,
-              );
-            } else if (error.request) {
-              thrownError = new RequestError(error.request);
-            }
-          }
+    try {
+      response = await httpsPost<Res & ErrorResponse>(
+        `${this.baseURL}${method}`,
+        payload,
+        this.httpsAgent,
+        this.options.requestTimeout,
+      );
+    } catch (error) {
+      throw new RequestError(error);
+    }
 
-          reject(thrownError);
-        });
-    });
+    if (response.statusCode >= 400) {
+      throw new BankIdError(response.data.errorCode, response.data.details);
+    }
+
+    return response.data as Res;
   }
 
-  createAxiosInstance(): AxiosInstance {
-    const baseURL = this.options.production
+  protected initializeHttpClient(): void {
+    this.baseURL = this.options.production
       ? `https://appapi2.bankid.com/rp/${this.version}/`
       : `https://appapi2.test.bankid.com/rp/${this.version}/`;
 
@@ -389,13 +441,7 @@ export class BankIdClient {
       : fs.readFileSync(this.options.pfx);
     const passphrase = this.options.passphrase;
 
-    return axios.create({
-      baseURL,
-      httpsAgent: new https.Agent({ pfx, passphrase, ca }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    this.httpsAgent = new https.Agent({ pfx, passphrase, ca });
   }
 }
 
@@ -459,7 +505,7 @@ export class BankIdClientV6 extends BankIdClient {
 
   constructor(options: BankIdClientSettingsV6) {
     super(options);
-    this.axios = this.createAxiosInstance();
+    this.initializeHttpClient();
     this.options = {
       // @ts-expect-error this.options not typed after super() call.
       ...(this.options as Required<BankIdClientSettings>),
