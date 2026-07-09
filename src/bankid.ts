@@ -7,6 +7,29 @@ import axios from "axios";
 import { QrGenerator, QrGeneratorOptions } from "./qrgenerator";
 
 //
+// Utility types
+//
+
+type AtLeastOne<T> = {
+  [K in keyof T]: Required<Pick<T, K>> & Partial<Omit<T, K>>;
+}[keyof T];
+
+type UserVisibleDataFormat = "plaintext" | "simpleMarkdownV1";
+
+type App = AtLeastOne<{
+  appIdentifier: string;
+  deviceOS: string;
+  deviceModelName: string;
+  deviceIdentifier: string;
+}>;
+
+type Web = AtLeastOne<{
+  deviceIdentifier: string;
+  referringDomain: string;
+  userAgent: string;
+}>;
+
+//
 // Type definitions for /auth
 //
 
@@ -15,8 +38,12 @@ export interface AuthRequestV5 {
   personalNumber?: string;
   requirement?: AuthOptionalRequirements;
   userVisibleData?: string;
-  userVisibleDataFormat?: "simpleMarkdownV1";
+  userVisibleDataFormat?: UserVisibleDataFormat;
   userNonVisibleData?: string;
+  returnUrl?: string;
+  returnRisk?: boolean;
+  app?: App;
+  web?: Web;
 }
 
 export interface AuthResponse {
@@ -33,10 +60,11 @@ export interface AuthResponse {
 interface AuthOptionalRequirements {
   cardReader?: "class1" | "class2";
   certificatePolicies?: string[];
-  issuerCn?: string[];
-  autoStartTokenRequired?: boolean;
-  allowFingerprint?: boolean;
+  mrtd?: boolean;
+  personalNumber?: string;
+  pinCode?: boolean;
 }
+
 
 //
 // Type definitions for /sign
@@ -47,6 +75,140 @@ export interface SignRequest extends AuthRequestV5 {
 }
 
 export interface SignResponse extends AuthResponse {}
+
+//
+// Type definitions for /payment
+//
+
+export interface PaymentRequest {
+  endUserIp: string;
+  userVisibleTransaction: UserVisibleTransaction;
+  returnUrl?: string;
+  returnRisk?: boolean;
+  riskFlags?: RiskFlag[];
+  userVisibleData?: string;
+  userVisibleDataFormat?: UserVisibleDataFormat;
+  userNonVisibleData?: string;
+  app?: App;
+  web?: Web;
+  requirement?: PaymentRequirement;
+}
+
+export interface PaymentResponse extends AuthResponse {}
+
+interface UserVisibleTransaction {
+  transactionType: "card" | "npa";
+  recipient: {
+    name: string;
+  };
+  money?: {
+    amount: string;
+    currency: string;
+  };
+  riskWarning?: RiskWarning;
+}
+
+type RiskFlag = 
+  | "newCard"
+  | "newCustomer" 
+  | "newRecipient"
+  | "highRiskRecipient"
+  | "largeAmount"
+  | "foreignCurrency"
+  | "cryptoCurrencyPurchase"
+  | "moneyTransfer"
+  | "overseasTransaction"
+  | "recurringPayment"
+  | "suspiciousPaymentPattern"
+  | "other";
+
+type RiskWarning = string;
+
+interface PaymentRequirement {
+  cardReader?: "class1" | "class2";
+  certificatePolicies?: string[];
+  mrtd?: boolean;
+  personalNumber?: string;
+  pinCode?: boolean;
+}
+
+//
+// Type definitions for /phone/auth
+//
+
+export interface PhoneAuthRequest {
+  callInitiator: "user" | "RP";
+  personalNumber?: string;
+  userVisibleData?: string;
+  userVisibleDataFormat?: UserVisibleDataFormat;
+  userNonVisibleData?: string;
+  requirement?: PhoneAuthRequirement;
+}
+
+export interface PhoneAuthResponse {
+  orderRef: string;
+}
+
+interface PhoneAuthRequirement {
+  cardReader?: "class1" | "class2";
+  certificatePolicies?: string[];
+  mrtd?: boolean;
+  pinCode?: boolean;
+}
+
+//
+// Type definitions for /phone/sign
+//
+
+export interface PhoneSignRequest {
+  callInitiator: "user" | "RP";
+  userVisibleData: string;
+  personalNumber?: string;
+  userVisibleDataFormat?: UserVisibleDataFormat;
+  userNonVisibleData?: string;
+  requirement?: PhoneSignRequirement;
+}
+
+export interface PhoneSignResponse {
+  orderRef: string;
+}
+
+interface PhoneSignRequirement {
+  cardReader?: "class1" | "class2";
+  certificatePolicies?: string[];
+  mrtd?: boolean;
+  pinCode?: boolean;
+}
+
+//
+// Type definitions for /other/payment
+//
+
+export interface OtherPaymentRequest {
+  personalNumber: string;
+  userVisibleTransaction: UserVisibleTransaction;
+  returnUrl?: string;
+  returnRisk?: boolean;
+  riskFlags?: RiskFlag[];
+  userVisibleData?: string;
+  userVisibleDataFormat?: UserVisibleDataFormat;
+  userNonVisibleData?: string;
+  app?: App;
+  web?: Web;
+  requirement?: OtherPaymentRequirement;
+}
+
+export interface OtherPaymentResponse {
+  orderRef: string;
+}
+
+interface OtherPaymentRequirement {
+  cardReader?: "class1" | "class2";
+  certificatePolicies?: string[];
+  mrtd?: boolean;
+  pinCode?: boolean;
+  risk?: "low" | "moderate";
+}
 
 //
 // Type definitions for /collect
@@ -73,13 +235,15 @@ export interface CompletionData {
   };
   device: {
     ipAddress: string;
+    uhi?: string;
   };
-  cert: {
-    notBefore: string;
-    notAfter: string;
+  bankIdIssueDate?: string;
+  stepUp?: {
+    mrtd?: boolean;
   };
-  signature: string;
-  ocspResponse: string;
+  signature?: string;
+  ocspResponse?: string;
+  risk?: "low" | "moderate" | "high";
 }
 
 export type FailedHintCode =
@@ -87,13 +251,19 @@ export type FailedHintCode =
   | "certificateErr"
   | "userCancel"
   | "cancelled"
-  | "startFailed";
+  | "startFailed"
+  | "userDeclinedCall"
+  | "notSupportedByUserApp"
+  | "transactionRiskBlocked";
 
 export type PendingHintCode =
   | "outstandingTransaction"
   | "noClient"
   | "started"
-  | "userSign";
+  | "userMrtd"
+  | "userCallConfirm"
+  | "userSign"
+  | "processing";
 
 //
 // Type definitions for /cancel
@@ -133,6 +303,10 @@ export const REQUEST_FAILED_ERROR = "BANKID_NO_RESPONSE";
 export enum BankIdMethod {
   auth = "auth",
   sign = "sign",
+  payment = "payment",
+  phoneAuth = "phone/auth",
+  phoneSign = "phone/sign",
+  otherPayment = "other/payment",
   collect = "collect",
   cancel = "cancel",
 }
@@ -140,6 +314,10 @@ export enum BankIdMethod {
 export type BankIdRequest =
   | AuthRequestV5
   | SignRequest
+  | PaymentRequest
+  | PhoneAuthRequest
+  | PhoneSignRequest
+  | OtherPaymentRequest
   | CollectRequest
   | CancelRequest;
 
@@ -147,6 +325,10 @@ export type BankIdResponse =
   | CancelResponse
   | AuthResponse
   | SignResponse
+  | PaymentResponse
+  | PhoneAuthResponse
+  | PhoneSignResponse
+  | OtherPaymentResponse
   | CollectResponseV5
   | CollectResponseV6;
 
@@ -247,9 +429,10 @@ export class BankIdClient {
     }
     if (
       parameters.userVisibleDataFormat != null &&
-      parameters.userVisibleDataFormat !== "simpleMarkdownV1"
+      parameters.userVisibleDataFormat !== "simpleMarkdownV1" &&
+      parameters.userVisibleDataFormat !== "plaintext"
     ) {
-      throw new Error("userVisibleDataFormat can only be simpleMarkdownV1.");
+      throw new Error("userVisibleDataFormat can only be plaintext or simpleMarkdownV1.");
     }
 
     parameters = {
@@ -276,9 +459,10 @@ export class BankIdClient {
     }
     if (
       parameters.userVisibleDataFormat != null &&
-      parameters.userVisibleDataFormat !== "simpleMarkdownV1"
+      parameters.userVisibleDataFormat !== "simpleMarkdownV1" &&
+      parameters.userVisibleDataFormat !== "plaintext"
     ) {
-      throw new Error("userVisibleDataFormat can only be simpleMarkdownV1.");
+      throw new Error("userVisibleDataFormat can only be plaintext or simpleMarkdownV1.");
     }
 
     parameters = {
@@ -305,6 +489,122 @@ export class BankIdClient {
     return this.#call<CollectRequest, CancelResponse>(
       BankIdMethod.cancel,
       parameters,
+    );
+  }
+
+  payment(parameters: PaymentRequest): Promise<PaymentResponse> {
+    if (!parameters.endUserIp || !parameters.userVisibleTransaction) {
+      throw new Error(
+        "Missing required arguments: endUserIp, userVisibleTransaction.",
+      );
+    }
+    if (
+      parameters.userVisibleDataFormat != null &&
+      parameters.userVisibleDataFormat !== "simpleMarkdownV1" &&
+      parameters.userVisibleDataFormat !== "plaintext"
+    ) {
+      throw new Error("userVisibleDataFormat can only be plaintext or simpleMarkdownV1.");
+    }
+
+    const payload = {
+      ...parameters,
+      userVisibleData: parameters.userVisibleData
+        ? Buffer.from(parameters.userVisibleData).toString("base64")
+        : undefined,
+      userNonVisibleData: parameters.userNonVisibleData
+        ? Buffer.from(parameters.userNonVisibleData).toString("base64")
+        : undefined,
+    };
+
+    return this.#call<PaymentRequest, PaymentResponse>(
+      BankIdMethod.payment,
+      payload,
+    );
+  }
+
+  phoneAuth(parameters: PhoneAuthRequest): Promise<PhoneAuthResponse> {
+    if (!parameters.callInitiator) {
+      throw new Error("Missing required argument: callInitiator.");
+    }
+    if (
+      parameters.userVisibleDataFormat != null &&
+      parameters.userVisibleDataFormat !== "simpleMarkdownV1" &&
+      parameters.userVisibleDataFormat !== "plaintext"
+    ) {
+      throw new Error("userVisibleDataFormat can only be plaintext or simpleMarkdownV1.");
+    }
+
+    const payload = {
+      ...parameters,
+      userVisibleData: parameters.userVisibleData
+        ? Buffer.from(parameters.userVisibleData).toString("base64")
+        : undefined,
+      userNonVisibleData: parameters.userNonVisibleData
+        ? Buffer.from(parameters.userNonVisibleData).toString("base64")
+        : undefined,
+    };
+
+    return this.#call<PhoneAuthRequest, PhoneAuthResponse>(
+      BankIdMethod.phoneAuth,
+      payload,
+    );
+  }
+
+  phoneSign(parameters: PhoneSignRequest): Promise<PhoneSignResponse> {
+    if (!parameters.callInitiator || !parameters.userVisibleData) {
+      throw new Error(
+        "Missing required arguments: callInitiator, userVisibleData.",
+      );
+    }
+    if (
+      parameters.userVisibleDataFormat != null &&
+      parameters.userVisibleDataFormat !== "simpleMarkdownV1" &&
+      parameters.userVisibleDataFormat !== "plaintext"
+    ) {
+      throw new Error("userVisibleDataFormat can only be plaintext or simpleMarkdownV1.");
+    }
+
+    const payload = {
+      ...parameters,
+      userVisibleData: Buffer.from(parameters.userVisibleData).toString("base64"),
+      userNonVisibleData: parameters.userNonVisibleData
+        ? Buffer.from(parameters.userNonVisibleData).toString("base64")
+        : undefined,
+    };
+
+    return this.#call<PhoneSignRequest, PhoneSignResponse>(
+      BankIdMethod.phoneSign,
+      payload,
+    );
+  }
+
+  otherPayment(parameters: OtherPaymentRequest): Promise<OtherPaymentResponse> {
+    if (!parameters.personalNumber || !parameters.userVisibleTransaction) {
+      throw new Error(
+        "Missing required arguments: personalNumber, userVisibleTransaction.",
+      );
+    }
+    if (
+      parameters.userVisibleDataFormat != null &&
+      parameters.userVisibleDataFormat !== "simpleMarkdownV1" &&
+      parameters.userVisibleDataFormat !== "plaintext"
+    ) {
+      throw new Error("userVisibleDataFormat can only be plaintext or simpleMarkdownV1.");
+    }
+
+    const payload = {
+      ...parameters,
+      userVisibleData: parameters.userVisibleData
+        ? Buffer.from(parameters.userVisibleData).toString("base64")
+        : undefined,
+      userNonVisibleData: parameters.userNonVisibleData
+        ? Buffer.from(parameters.userNonVisibleData).toString("base64")
+        : undefined,
+    };
+
+    return this.#call<OtherPaymentRequest, OtherPaymentResponse>(
+      BankIdMethod.otherPayment,
+      payload,
     );
   }
 
