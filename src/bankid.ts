@@ -400,11 +400,11 @@ export class BankIdClient {
 }
 
 interface AuthOptionalRequirementsV6 {
-  pinCode: boolean;
+  pinCode?: boolean;
   cardReader?: "class1" | "class2";
-  mrtd: boolean;
+  mrtd?: boolean;
   certificatePolicies?: string[];
-  personalNumber: string;
+  personalNumber?: string;
 }
 
 export interface AuthRequestV6 {
