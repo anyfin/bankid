@@ -8,12 +8,14 @@ import { QrGenerator, QrGeneratorOptions } from "./qrgenerator";
 // Type definitions for /auth
 //
 
+export type UserVisibleDataFormat = "plaintext" | "simpleMarkdownV1";
+
 export interface AuthRequestV5 {
   endUserIp: string;
   personalNumber?: string;
   requirement?: AuthOptionalRequirements;
   userVisibleData?: string;
-  userVisibleDataFormat?: "simpleMarkdownV1";
+  userVisibleDataFormat?: UserVisibleDataFormat;
   userNonVisibleData?: string;
 }
 
@@ -85,13 +87,25 @@ export type FailedHintCode =
   | "certificateErr"
   | "userCancel"
   | "cancelled"
-  | "startFailed";
+  | "startFailed"
+  | "userDeclinedCall"
+  | "notSupportedByUserApp"
+  | "mrtdVerificationFailed"
+  | "facialRecognitionFailed"
+  | "nfcNotSupportedByDevice"
+  | "multipleBankIdsOnDevice"
+  | "stepUpFailed";
 
 export type PendingHintCode =
   | "outstandingTransaction"
   | "noClient"
   | "started"
-  | "userSign";
+  | "userMrtd"
+  | "userCallConfirm"
+  | "userSign"
+  | "processing"
+  | "userStepUp"
+  | "userFace";
 
 //
 // Type definitions for /cancel
@@ -180,9 +194,9 @@ export class BankIdError extends Error {
 }
 
 export class RequestError extends Error {
-  readonly request?: any;
+  readonly request?: unknown;
 
-  constructor(request?: any) {
+  constructor(request?: unknown) {
     super(REQUEST_FAILED_ERROR);
     Error.captureStackTrace(this, this.constructor);
 
@@ -201,6 +215,7 @@ interface HttpResponse<T> {
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+const MAX_RESPONSE_BYTES = 1_048_576;
 
 function httpsPost<T>(
   url: string,
@@ -210,6 +225,7 @@ function httpsPost<T>(
 ): Promise<HttpResponse<T>> {
   return new Promise((resolve, reject) => {
     const { hostname, pathname, search } = new URL(url);
+    const payload = JSON.stringify(body);
 
     const req = https.request(
       {
@@ -219,28 +235,52 @@ function httpsPost<T>(
         agent,
         headers: {
           "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
         },
       },
       (res) => {
         const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        let size = 0;
+        res.on("data", (chunk: Buffer) => {
+          size += chunk.length;
+          if (size > MAX_RESPONSE_BYTES) {
+            req.destroy(
+              new Error(`Response exceeded ${MAX_RESPONSE_BYTES} bytes`),
+            );
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on("error", reject);
+        res.on("close", () => {
+          if (!res.complete) reject(new Error("Response closed before end"));
+        });
         res.on("end", () => {
-          const raw = Buffer.concat(chunks).toString("utf-8");
+          clearTimeout(deadline);
           try {
-            const data = JSON.parse(raw) as T;
+            const data = JSON.parse(
+              Buffer.concat(chunks).toString("utf-8"),
+            ) as T;
             resolve({ statusCode: res.statusCode ?? 0, data });
           } catch {
-            reject(new Error(`Failed to parse response: ${raw}`));
+            reject(
+              new Error(
+                `Failed to parse response with status ${res.statusCode}`,
+              ),
+            );
           }
         });
       },
     );
 
-    req.setTimeout(timeoutMs, () => {
+    const deadline = setTimeout(() => {
       req.destroy(new Error(`Request timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    req.on("error", (error) => {
+      clearTimeout(deadline);
+      reject(error);
     });
-    req.on("error", reject);
-    req.write(JSON.stringify(body));
+    req.write(payload);
     req.end();
   });
 }
@@ -249,6 +289,9 @@ function httpsPost<T>(
 // Client implementation
 //
 
+/**
+ * @deprecated Targets RP API v5.1, which BankID shut down on 2025-09-30. Use {@link BankIdClientV6}.
+ */
 export class BankIdClient {
   readonly options: Required<BankIdClientSettings>;
   protected baseURL: string;
@@ -304,9 +347,12 @@ export class BankIdClient {
     }
     if (
       parameters.userVisibleDataFormat != null &&
+      parameters.userVisibleDataFormat !== "plaintext" &&
       parameters.userVisibleDataFormat !== "simpleMarkdownV1"
     ) {
-      throw new Error("userVisibleDataFormat can only be simpleMarkdownV1.");
+      throw new Error(
+        "userVisibleDataFormat must be plaintext or simpleMarkdownV1.",
+      );
     }
 
     parameters = {
@@ -333,9 +379,12 @@ export class BankIdClient {
     }
     if (
       parameters.userVisibleDataFormat != null &&
+      parameters.userVisibleDataFormat !== "plaintext" &&
       parameters.userVisibleDataFormat !== "simpleMarkdownV1"
     ) {
-      throw new Error("userVisibleDataFormat can only be simpleMarkdownV1.");
+      throw new Error(
+        "userVisibleDataFormat must be plaintext or simpleMarkdownV1.",
+      );
     }
 
     parameters = {
@@ -383,25 +432,15 @@ export class BankIdClient {
     return this.awaitPendingCollect(signResponse.orderRef);
   }
 
-  awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
-    return new Promise((resolve, reject) => {
-      const timer = setInterval(() => {
-        this.collect({ orderRef })
-          .then(response => {
-            if (response.status === "complete") {
-              clearInterval(timer);
-              resolve(response);
-            } else if (response.status === "failed") {
-              clearInterval(timer);
-              reject(response);
-            }
-          })
-          .catch(error => {
-            clearInterval(timer);
-            reject(error);
-          });
-      }, this.options.refreshInterval);
-    });
+  async awaitPendingCollect(orderRef: string): Promise<CollectResponse> {
+    for (;;) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, this.options.refreshInterval),
+      );
+      const response = await this.collect({ orderRef });
+      if (response.status === "complete") return response;
+      if (response.status !== "pending") throw response;
+    }
   }
 
   async #call<Req extends BankIdRequest, Res extends BankIdResponse>(
@@ -441,21 +480,58 @@ export class BankIdClient {
       : fs.readFileSync(this.options.pfx);
     const passphrase = this.options.passphrase;
 
-    this.httpsAgent = new https.Agent({ pfx, passphrase, ca });
+    this.httpsAgent = new https.Agent({
+      pfx,
+      passphrase,
+      ca,
+      minVersion: "TLSv1.2",
+      rejectUnauthorized: true,
+    });
   }
 }
 
 interface AuthOptionalRequirementsV6 {
-  pinCode: boolean;
+  pinCode?: boolean;
   cardReader?: "class1" | "class2";
-  mrtd: boolean;
+  /** Cannot be combined with `stepUp`. */
+  mrtd?: boolean;
+  /** `face` alone is not allowed. Cannot be combined with `mrtd`. */
+  stepUp?: ("mrtd" | "face")[];
   certificatePolicies?: string[];
-  personalNumber: string;
+  personalNumber?: string;
+}
+
+export interface WebDeviceData {
+  referringDomain?: string;
+  userAgent?: string;
+  /** Must not be the session cookie. */
+  deviceIdentifier?: string;
+}
+
+export interface AppDeviceData {
+  appIdentifier?: string;
+  deviceOS?: string;
+  deviceModelName?: string;
+  deviceIdentifier?: string;
 }
 
 export interface AuthRequestV6 {
+  /** The end user's IP address as seen by your service, not a proxy's. */
   endUserIp: string;
   requirement?: AuthOptionalRequirementsV6;
+  userVisibleData?: string;
+  userVisibleDataFormat?: UserVisibleDataFormat;
+  userNonVisibleData?: string;
+  /** Put a session nonce in the URL fragment and check it on return. */
+  returnUrl?: string;
+  returnRisk?: boolean;
+  /** Send `web` or `app`, not both. */
+  web?: WebDeviceData;
+  app?: AppDeviceData;
+}
+
+export interface SignRequestV6 extends AuthRequestV6 {
+  userVisibleData: string;
 }
 
 interface AuthResponseV6 extends AuthResponse {
@@ -479,9 +555,14 @@ export interface CompletionDataV6 {
   };
   /** ISO 8601 date format YYYY-MM-DD with a UTC time zone offset. */
   bankIdIssueDate: string;
-  stepUp: boolean;
+  stepUp?: {
+    mrtd?: boolean;
+    face?: boolean;
+  };
   signature: string;
   ocspResponse: string;
+  /** Returned only when `returnRisk` is set, and may be absent. Block `high`. */
+  risk?: "low" | "moderate" | "high";
 }
 
 export interface CollectResponseV6
@@ -497,7 +578,7 @@ interface BankIdClientSettingsV6 extends BankIdClientSettings {
 
 /**
  * A class for creating a BankId Client based on v6.0 api, extending from BankIdClient
- * @see https://www.bankid.com/en/utvecklare/guider/teknisk-integrationsguide/webbservice-api
+ * @see https://developers.bankid.com/api-references/auth--sign/overview
  */
 export class BankIdClientV6 extends BankIdClient {
   version = "v6.0";
@@ -522,7 +603,7 @@ export class BankIdClientV6 extends BankIdClient {
     return { ...resp, qr };
   }
 
-  async sign(parameters: SignRequest): Promise<SignResponseV6> {
+  async sign(parameters: SignRequestV6): Promise<SignResponseV6> {
     const resp = await super.sign(parameters);
     const qr = this.options.qrEnabled
       ? new QrGenerator(resp, this.options.qrOptions)

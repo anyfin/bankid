@@ -36,7 +36,12 @@ client
 ```
 Acting on a session is done trough opening the app or trough scanning a QR Code, both examples are documented in detail [in the examples directory](./examples)
 
+Keep `qrStartSecret` on your server. Send the browser only the QR string from `qr.nextQr()`, never the full `authenticate()` or `sign()` response.
+
 ## Usage V5
+
+> [!WARNING]
+> BankID shut down RP API v5.1 on 2025-09-30, so `BankIdClient` calls fail with HTTP 403. Use `BankIdClientV6`.
 
 ```javascript
 import { BankIdClient } from "bankid";

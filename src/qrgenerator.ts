@@ -49,6 +49,7 @@ const TIMEOUT = 60 as const;
 export class QrGenerator {
   cache: QrGeneratorCache = defaultCache;
   orderRef: string | null;
+  #cacheWrite: Promise<void> = Promise.resolve();
 
   static defaultOptions = { orderTTL: TIMEOUT } as const;
 
@@ -70,7 +71,8 @@ export class QrGenerator {
         qrStartSecret,
         qrStartToken,
       };
-      this.cache.set(orderRef, qrCacheEntry);
+      this.#cacheWrite = this.cache.set(orderRef, qrCacheEntry);
+      this.#cacheWrite.catch(() => {});
     }
 
     // local in-memory cache will auto-clean keys after set TTL
@@ -79,7 +81,7 @@ export class QrGenerator {
         if (this.orderRef) {
           this.cache.delete(this.orderRef);
         }
-      }, options.orderTTL * 1000);
+      }, options.orderTTL * 1000).unref();
     }
     return this;
   }
@@ -116,6 +118,7 @@ export class QrGenerator {
     orderRef: string,
     { maxCycles, timeout }: QRGenerateOptions = { timeout: TIMEOUT },
   ) {
+    await this.#cacheWrite;
     const qr = await this.cache.get(orderRef);
     if (!qr) return;
     for (let i = 0; i >= 0; i++) {
