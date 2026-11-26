@@ -1,17 +1,24 @@
 {
-  "watchOptions": {
-    "excludeDirectories": ["**/node_modules", "/lib"]
-  },
   "compilerOptions": {
-    "declaration": true,
-    "lib": ["ESNext"],
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "outDir": "./lib",
-    "sourceMap": true,
+    "target": "es2023",
+    "lib": ["es2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "strict": true,
-    "target": "ES2018",
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "**/*.spec.ts"],
+  "include": [
+    "src",
+    "test/*.ts",
+    "test/examples",
+    "tsdown.config.ts",
+    "vitest.config.ts"
+  ]
 }

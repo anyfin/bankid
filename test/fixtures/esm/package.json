@@ -1,0 +1,5 @@
+{
+  "name": "fixture-esm",
+  "private": true,
+  "type": "module"
+}

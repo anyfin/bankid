@@ -1,0 +1,67 @@
+name: Live check
+
+# Every night, checks the package against BankID's test environment and the
+# expiry of the certificates it depends on. See scripts/live-check.mjs. On
+# failure it opens an issue, or comments on the one already open.
+#
+# The phone.auth step runs only when the Actions secret
+# LIVE_CHECK_PERSONAL_NUMBER holds a test personal number; otherwise it is
+# skipped. The script redacts the number from the run log.
+#
+# The issue is built only from the structured result the script writes
+# (fixed step ids, outcomes, HTTP statuses and codes from a fixed list), never
+# from the script's output, which stays in the run log.
+
+on:
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+    inputs:
+      warn-days:
+        description: Fail when a certificate expires within this many days. A large value makes the run fail on purpose.
+        default: "60"
+
+permissions:
+  contents: read
+  issues: write
+
+# One run at a time, so two runs cannot both find no open issue and each open
+# one. A run that starts while another is going waits for it.
+concurrency:
+  group: live-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Check against BankID's test environment
+        id: check
+        env:
+          WARN_DAYS: ${{ inputs.warn-days || '60' }}
+          LIVE_CHECK_PERSONAL_NUMBER: ${{ secrets.LIVE_CHECK_PERSONAL_NUMBER }}
+        run: |
+          set +e
+          node scripts/live-check.mjs --result live-check-result.json
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+      - name: Open or update the issue
+        if: failure() || steps.check.outputs.code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node scripts/live-check-report.mjs --issue live-check-result.json --run-url "$RUN_URL" > issue.md
+          node scripts/report-issue.mjs --title "Nightly check against BankID's test environment failed" --body-file issue.md
+      - name: Fail the run
+        if: steps.check.outputs.code != '0'
+        run: exit 1

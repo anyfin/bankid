@@ -1,0 +1,55 @@
+name: Spec drift
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Compare with the published spec
+        id: compare
+        run: |
+          set +e
+          node scripts/check-spec.mjs 2>&1 | tee report.txt
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+      - name: Open an issue on a difference
+        if: steps.compare.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # GitHub refuses issue bodies over 65536 characters, so quote at most
+          # 20000 bytes of the report and link to the run for all of it.
+          excerpt=$(head -c 20000 report.txt)
+          # A fence longer than any run of backticks in the excerpt, so the
+          # excerpt cannot close it.
+          longest=$(printf '%s' "$excerpt" | grep -o '`*' | awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }')
+          fence=$(printf '%*s' "$(( longest < 3 ? 3 : longest + 1 ))" '' | tr ' ' '`')
+          {
+            echo "The weekly check found that the checked-in spec differs from the one BankID publishes."
+            echo
+            echo "$fence"
+            printf '%s\n' "$excerpt"
+            echo "$fence"
+            echo
+            echo "Full report: $RUN_URL"
+            echo
+            echo "Update \`spec/\`, run \`pnpm generate\` and commit the result. See \`spec/README.md\`."
+          } > issue.md
+          node scripts/report-issue.mjs --title "BankID API spec has changed" --body-file issue.md
+      - name: Fail the run
+        if: steps.compare.outputs.code != '0'
+        run: exit 1

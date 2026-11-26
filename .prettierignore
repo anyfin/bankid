@@ -1,1 +1,5 @@
-lib/
+cert
+pnpm-lock.yaml
+flake.lock
+src/generated
+spec/*.yaml
