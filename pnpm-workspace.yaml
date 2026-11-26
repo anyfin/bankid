@@ -1,0 +1,5 @@
+# Only install package versions that have been public for at least 7 days.
+minimumReleaseAge: 10080
+hoist: false
+ignoredBuiltDependencies:
+  - simple-git-hooks

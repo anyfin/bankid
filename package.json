@@ -6,17 +6,10 @@
     "bankid",
     "authentication"
   ],
-  "version": "3.2.1",
-  "main": "lib/index.js",
+  "version": "4.0.0-beta.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/anyfin/bankid.git"
-  },
-  "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc",
-    "prepublishOnly": "yarn build",
-    "format": "prettier --write \"./**/*.{mjs,js,ts,json,md}\""
   },
   "author": "Sven Perkmann",
   "license": "MIT",
@@ -24,23 +17,103 @@
   "bugs": {
     "url": "https://github.com/anyfin/bankid/issues"
   },
-  "dependencies": {
-    "axios": "^1.6.8"
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/client.d.mts",
+        "default": "./dist/client.mjs"
+      },
+      "require": {
+        "types": "./dist/client.d.cts",
+        "default": "./dist/client.cjs"
+      }
+    },
+    "./testing": {
+      "import": {
+        "types": "./dist/testing.d.mts",
+        "default": "./dist/testing.mjs"
+      },
+      "require": {
+        "types": "./dist/testing.d.cts",
+        "default": "./dist/testing.cjs"
+      }
+    },
+    "./package.json": "./package.json"
   },
-  "devDependencies": {
-    "@types/node": "^20.11.10",
-    "prettier": "^3.2.4",
-    "typescript": "5.x"
-  },
-  "peerDependencies": {
-    "@types/node": ">=14 <25"
-  },
-  "peerDependenciesMeta": {
-    "@types/node": {
-      "optional": true
+  "typesVersions": {
+    "*": {
+      "client": [
+        "./dist/client.d.cts"
+      ],
+      "testing": [
+        "./dist/testing.d.cts"
+      ]
     }
   },
+  "files": [
+    "dist"
+  ],
   "engines": {
-    "node": ">=10.13.0"
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "tag": "next"
+  },
+  "packageManager": "pnpm@10.34.7",
+  "scripts": {
+    "build": "tsdown",
+    "check:package": "node scripts/check-package.mjs && pnpm check:docs",
+    "check:docs": "node scripts/check-docs.mjs && node scripts/check-doc-comments.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "oxlint --type-aware && pnpm format:check",
+    "prepare": "simple-git-hooks",
+    "prepublishOnly": "pnpm lint && pnpm check:generated && pnpm typecheck && pnpm build && pnpm test && pnpm check:package",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/client",
+    "generate": "openapi-typescript spec/openapi-auth-sign.yaml -o src/generated/auth-sign.ts",
+    "check:generated": "node scripts/check-generated.mjs",
+    "check:spec": "node scripts/check-spec.mjs"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,mts,cts}": [
+      "oxlint --type-aware",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": "prettier --write"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "^5.1.1",
+    "bankid-v3": "npm:bankid@3.2.1",
+    "lint-staged": "^17.6.1",
+    "openapi-typescript": "7.13.0",
+    "oxlint": "^1.94.0",
+    "oxlint-tsgolint": "^7.0.2007",
+    "prettier": "^3.10.1",
+    "simple-git-hooks": "^2.14.0",
+    "tsdown": "^0.23.7",
+    "typescript": "^7.0.2",
+    "typescript-4.9": "npm:typescript@4.9.5",
+    "vitest": "^5.1.1"
   }
 }

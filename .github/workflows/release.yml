@@ -1,20 +1,158 @@
-name: Build and Publish to NPM
+name: Release
+
+# Publishes to npm when a GitHub release is published, with npm trusted
+# publishing (OIDC) and provenance, so no npm token is stored. A prerelease
+# version goes to the "next" dist-tag, any other version to "latest".
+#
+# Two jobs, so the job that can publish runs no repository code:
+# - "Check and pack" (read-only) installs, runs every check, keeps the tarball
+#   the package check packed and verified, dry-runs the publish and uploads
+#   that tarball. It is all that runs for a pull request that changes how a
+#   release is made, or a manual run.
+# - "Publish" runs only for a published release in the public repository,
+#   anyfin/bankid. It downloads that exact tarball, checks the repository and
+#   the tag against it, and publishes it with scripts disabled. It uses the
+#   "npm" environment, where the repository's owners can require an approval.
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/check-release.mjs
+      - scripts/check-package.mjs
+      - package.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'release' && 'publish' || github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  setup-build-publish:
-    name: Setup, Build and Publish
+  check:
+    name: Check and pack
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DRY_RUN: ${{ github.event_name != 'release' }}
+    outputs:
+      dist-tag: ${{ steps.release.outputs.dist-tag }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "14"
-      - run: yarn
-      - run: yarn build
-      - uses: JS-DevTools/npm-publish@v1
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      # No dependency cache: the tarball this job packs is what gets published.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          token: ${{ secrets.NPM_AUTH_TOKEN }}
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Check the release tag, version and repository
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: node scripts/check-release.mjs
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm check:generated
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm test
+      # The tarball the package check verified is the one uploaded and
+      # published; nothing packs a second one.
+      - name: Check and keep the packed tarball
+        run: |
+          mkdir package
+          node scripts/check-package.mjs --keep package/bankid.tgz
+          pnpm check:docs
+          ls package
+      # The checks above already ran, so lifecycle scripts are skipped.
+      - name: Publish (dry run)
+        env:
+          DIST_TAG: ${{ steps.release.outputs.dist-tag }}
+        run: npm publish ./package/*.tgz --dry-run --ignore-scripts --access public --tag "$DIST_TAG"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package
+          path: package/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish
+    # Only the public repository publishes; a fork or a copy never does.
+    if: github.event_name == 'release' && github.repository == 'anyfin/bankid'
+    needs: check
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+          path: package
+      - name: Check the tarball against the repository and the release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          DIST_TAG: ${{ needs.check.outputs.dist-tag }}
+        run: |
+          set -euo pipefail
+          count=$(ls package/*.tgz | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "Expected one tarball, found $count."
+            exit 1
+          fi
+          tar -xOzf package/*.tgz package/package.json > manifest.json
+          node -e '
+            const { readFileSync } = require("node:fs");
+            const { version, repository } = JSON.parse(readFileSync("manifest.json", "utf8"));
+            const url = typeof repository === "string" ? repository : repository?.url;
+            const env = process.env;
+            const problems = [];
+            // The same rule as check-release.mjs; a test keeps them equal.
+            let parsed;
+            try { parsed = new URL(url ?? ""); } catch {}
+            if (parsed?.host !== "github.com" || !/^\/anyfin\/bankid(?:\.git)?$/i.test(parsed.pathname))
+              problems.push(`the package names repository ${url}, not https://github.com/anyfin/bankid`);
+            if ((env.GITHUB_REPOSITORY ?? "").toLowerCase() !== "anyfin/bankid")
+              problems.push(`this repository is ${env.GITHUB_REPOSITORY}, not anyfin/bankid`);
+            if (env.RELEASE_TAG !== version && env.RELEASE_TAG !== `v${version}`)
+              problems.push(`release tag ${env.RELEASE_TAG} does not match version ${version}`);
+            // The same pattern as check-release.mjs; a test keeps them equal.
+            const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(version);
+            if (!semver || semver[5] !== undefined) problems.push(`version ${version} is not a release version`);
+            const prerelease = semver?.[4] !== undefined;
+            if (env.RELEASE_PRERELEASE !== String(prerelease))
+              problems.push(`the release prerelease flag disagrees with version ${version}`);
+            if (env.DIST_TAG !== (prerelease ? "next" : "latest"))
+              problems.push(`dist-tag ${env.DIST_TAG} does not fit version ${version}`);
+            for (const problem of problems) console.log(`Refused: ${problem}`);
+            if (problems.length > 0) process.exit(1);
+            console.log(`Publishing ${version} under ${env.DIST_TAG}.`);
+          '
+      - name: Check that npm supports trusted publishing
+        run: |
+          version=$(npm --version)
+          echo "npm $version"
+          node -e '
+            const [a, b, c] = process.argv[1].split(".").map(Number);
+            if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) {
+              console.error("Trusted publishing needs npm 11.5.1 or later.");
+              process.exit(1);
+            }' "$version"
+      - name: Publish
+        env:
+          DIST_TAG: ${{ needs.check.outputs.dist-tag }}
+        run: npm publish ./package/*.tgz --provenance --ignore-scripts --access public --tag "$DIST_TAG"
